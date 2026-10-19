@@ -18,7 +18,7 @@ LIST @CITORA.PLATFORM.CITORA_REPO/branches/main/config/excel/source_db.yml;
 
 -- Re-create the procedure so IMPORTS resolve to the latest fetched Python code.
 EXECUTE IMMEDIATE FROM
-    @CITORA.PLATFORM.CITORA_REPO/branches/main/snowflake/02_register_procedure.sql;
+    @CITORA.PLATFORM.CITORA_REPO/branches/main/snowflake/03_register_procedure.sql;
 
 -- Validate the staged workbook and replace CITORA.RAW.CRM_DEALS.
 CALL CITORA.PLATFORM.LOAD_EXCEL(
