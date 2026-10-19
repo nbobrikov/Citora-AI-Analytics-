@@ -1,0 +1,108 @@
+version: 1
+
+workbook:
+  id: source_db
+  description: Выгрузка сделок Citora из CRM.
+  file_name: source_db.xlsx
+
+  sheets:
+    - name: DEAL
+      description: Сделки и связанные с ними контактные и маркетинговые данные.
+      header_row: 1
+      target_table: CRM_DEALS
+
+      columns:
+        - name: ID
+          type: integer
+          nullable: false
+          description: Уникальный идентификатор сделки.
+
+        - name: "Контакт: Рабочий телефон"
+          type: string
+          nullable: true
+          description: Рабочий телефон контакта.
+
+        - name: "Контакт: Мобильный телефон"
+          type: string
+          nullable: true
+          description: Мобильный телефон контакта.
+
+        - name: "Контакт: Номер факса"
+          type: string
+          nullable: true
+          description: Номер факса контакта.
+
+        - name: "Контакт: Домашний телефон"
+          type: string
+          nullable: true
+          description: Домашний телефон контакта.
+
+        - name: "Контакт: Номер пейджера"
+          type: string
+          nullable: true
+          description: Номер пейджера контакта.
+
+        - name: "Контакт: Телефон для рассылок"
+          type: string
+          nullable: true
+          description: Телефон контакта, используемый для рассылок.
+
+        - name: "Контакт: Другой телефон"
+          type: string
+          nullable: true
+          description: Дополнительный телефон контакта.
+
+        - name: "Номер телефона контакта"
+          type: string
+          nullable: true
+          description: Основной номер телефона контакта.
+
+        - name: "Дата создания"
+          type: timestamp
+          nullable: false
+          description: Дата и время создания сделки.
+
+        - name: "Дата оплаты"
+          type: timestamp
+          nullable: true
+          description: Дата и время оплаты сделки.
+
+        - name: "Ответственный"
+          type: string
+          nullable: false
+          description: Ответственный сотрудник по сделке.
+
+        - name: "Воронка"
+          type: string
+          nullable: false
+          description: Воронка, к которой относится сделка.
+
+        - name: "UTM Source"
+          type: string
+          nullable: true
+          description: Источник рекламного трафика.
+
+        - name: "UTM Medium"
+          type: string
+          nullable: true
+          description: Канал или тип рекламного трафика.
+
+        - name: "UTM Campaign"
+          type: string
+          nullable: true
+          description: Название рекламной кампании.
+
+        - name: "UTM Content"
+          type: string
+          nullable: true
+          description: Идентификатор или вариант рекламного контента.
+
+        - name: "UTM Term"
+          type: string
+          nullable: true
+          description: Ключевое слово или дополнительная метка рекламного трафика.
+
+        - name: "Промокод"
+          type: string
+          nullable: true
+          description: Промокод, связанный со сделкой.
