@@ -29,8 +29,8 @@ IMPORTS = (
     '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/'
 )
 HANDLER = 'citora_ai_analytic.procedure.run'
-EXECUTE AS OWNER
-COMMENT = 'Validates a staged Excel workbook using a Git-versioned YAML contract and replaces RAW tables';
+COMMENT = 'Validates a staged Excel workbook using a Git-versioned YAML contract and replaces RAW tables'
+EXECUTE AS OWNER;
 
 GRANT USAGE ON PROCEDURE CITORA.PLATFORM.LOAD_EXCEL(
     VARCHAR,
