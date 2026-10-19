@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -83,7 +84,7 @@ def load_excel_contract(path: str | Path) -> ExcelContract:
     """Read and validate a local Excel YAML contract.
 
     This entry point is intended for local development and automated tests.
-    Production procedures should use ``load_excel_contract_from_stage``.
+    Production procedures should use ``load_excel_contract_from_import``.
     """
     contract_path = Path(path)
     if not contract_path.is_file():
@@ -93,19 +94,17 @@ def load_excel_contract(path: str | Path) -> ExcelContract:
         return parse_excel_contract(stream.read())
 
 
-def load_excel_contract_from_stage(scoped_url: str) -> ExcelContract:
-    """Read and validate a YAML contract from a Snowflake scoped file URL."""
-    if not scoped_url.startswith("https://"):
-        raise ValueError(
-            "Contract location must be a scoped URL created by BUILD_SCOPED_FILE_URL"
-        )
+def load_excel_contract_from_import(file_name: str = "source_db.yml") -> ExcelContract:
+    """Read a YAML contract attached through the procedure IMPORTS clause."""
+    if Path(file_name).name != file_name:
+        raise ValueError("Contract import must be a file name without a directory")
 
-    # The lazy import keeps local contract validation independent from Snowpark.
-    from snowflake.snowpark.files import SnowflakeFile
+    import_directory = sys._xoptions.get("snowflake_import_directory")
+    if not import_directory:
+        raise RuntimeError("Snowflake import directory is not available")
 
-    with SnowflakeFile.open(scoped_url, "r") as stream:
-        content = stream.read()
+    contract_path = Path(import_directory) / file_name
+    if not contract_path.is_file():
+        raise FileNotFoundError(f"Imported Excel contract not found: {file_name}")
 
-    if isinstance(content, bytes):
-        content = content.decode("utf-8")
-    return parse_excel_contract(content)
+    return parse_excel_contract(contract_path.read_text(encoding="utf-8"))

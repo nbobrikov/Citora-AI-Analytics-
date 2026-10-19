@@ -26,10 +26,6 @@ CALL CITORA.PLATFORM.LOAD_EXCEL(
         @CITORA.PLATFORM.CITORA_RAW_STAGE,
         'files/source_db.xlsx'
     ),
-    BUILD_SCOPED_FILE_URL(
-        @CITORA.PLATFORM.CITORA_REPO,
-        'branches/main/config/excel/source_db.yml'
-    ),
     'CITORA',
     'RAW'
 );

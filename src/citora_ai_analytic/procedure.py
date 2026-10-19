@@ -5,7 +5,7 @@ from typing import Any
 
 from snowflake.snowpark import Session
 
-from citora_ai_analytic.config import load_excel_contract_from_stage
+from citora_ai_analytic.config import load_excel_contract_from_import
 from citora_ai_analytic.excel import read_excel_from_stage
 from citora_ai_analytic.loader import replace_raw_tables
 
@@ -13,14 +13,13 @@ from citora_ai_analytic.loader import replace_raw_tables
 def run(
     session: Session,
     excel_scoped_url: str,
-    contract_scoped_url: str,
     database: str,
     raw_schema: str,
 ) -> dict[str, Any]:
     """Validate a staged Excel workbook and replace its Snowflake RAW tables."""
     started_at = datetime.now(UTC)
 
-    contract = load_excel_contract_from_stage(contract_scoped_url)
+    contract = load_excel_contract_from_import()
     frames = read_excel_from_stage(excel_scoped_url, contract)
     tables = replace_raw_tables(
         session=session,

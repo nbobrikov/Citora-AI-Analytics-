@@ -11,7 +11,6 @@ USE SCHEMA PLATFORM;
 
 CREATE OR REPLACE PROCEDURE CITORA.PLATFORM.LOAD_EXCEL(
     EXCEL_SCOPED_URL VARCHAR,
-    CONTRACT_SCOPED_URL VARCHAR,
     TARGET_DATABASE VARCHAR,
     TARGET_SCHEMA VARCHAR
 )
@@ -26,7 +25,8 @@ PACKAGES = (
     'pyyaml'
 )
 IMPORTS = (
-    '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/'
+    '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/',
+    '@CITORA.PLATFORM.CITORA_REPO/branches/main/config/excel/source_db.yml'
 )
 HANDLER = 'citora_ai_analytic.procedure.run'
 COMMENT = 'Validates a staged Excel workbook using a Git-versioned YAML contract and replaces RAW tables'
@@ -35,12 +35,11 @@ EXECUTE AS OWNER;
 GRANT USAGE ON PROCEDURE CITORA.PLATFORM.LOAD_EXCEL(
     VARCHAR,
     VARCHAR,
-    VARCHAR,
     VARCHAR
 ) TO ROLE CITORA_LOADER;
 
 -- Example after uploading source_db.xlsx to CITORA_RAW_STAGE/files.
--- The YAML contract is read directly from the Git repository clone.
+-- The YAML contract is attached to the procedure through IMPORTS.
 --
 -- PUT file://<absolute-path>/source_db.xlsx
 --     @CITORA.PLATFORM.CITORA_RAW_STAGE/files
@@ -52,16 +51,11 @@ GRANT USAGE ON PROCEDURE CITORA.PLATFORM.LOAD_EXCEL(
 --         @CITORA.PLATFORM.CITORA_RAW_STAGE,
 --         'files/source_db.xlsx'
 --     ),
---     BUILD_SCOPED_FILE_URL(
---         @CITORA.PLATFORM.CITORA_REPO,
---         'branches/main/config/excel/source_db.yml'
---     ),
 --     'CITORA',
 --     'RAW'
 -- );
 
 DESCRIBE PROCEDURE CITORA.PLATFORM.LOAD_EXCEL(
-    VARCHAR,
     VARCHAR,
     VARCHAR,
     VARCHAR
