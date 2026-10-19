@@ -5,9 +5,18 @@ from typing import Any
 
 from snowflake.snowpark import Session
 
-from citora_ai_analytic.config import load_excel_contract_from_import
-from citora_ai_analytic.excel import read_excel_from_stage
-from citora_ai_analytic.loader import replace_raw_tables
+try:
+    from citora_ai_analytic.config import load_excel_contract_from_import
+    from citora_ai_analytic.excel import read_excel_from_stage
+    from citora_ai_analytic.loader import replace_raw_tables
+except ModuleNotFoundError as error:
+    if error.name != "citora_ai_analytic":
+        raise
+    # Snowflake places individually imported Git files in one flat directory.
+    from excel import read_excel_from_stage
+    from loader import replace_raw_tables
+
+    from config import load_excel_contract_from_import
 
 
 def run(

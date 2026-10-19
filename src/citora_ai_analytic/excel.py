@@ -5,7 +5,12 @@ from typing import Any
 
 import pandas as pd
 
-from citora_ai_analytic.config import ColumnConfig, ExcelContract, SheetConfig
+try:
+    from citora_ai_analytic.config import ColumnConfig, ExcelContract, SheetConfig
+except ModuleNotFoundError as error:
+    if error.name != "citora_ai_analytic":
+        raise
+    from config import ColumnConfig, ExcelContract, SheetConfig
 
 MAX_EXCEL_BYTES = 100 * 1024 * 1024
 

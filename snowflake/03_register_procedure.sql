@@ -32,10 +32,13 @@ PACKAGES = (
     'pyyaml'
 )
 IMPORTS = (
-    '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/',
+    '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/citora_ai_analytic/procedure.py',
+    '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/citora_ai_analytic/config.py',
+    '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/citora_ai_analytic/excel.py',
+    '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/citora_ai_analytic/loader.py',
     '@CITORA.PLATFORM.CITORA_REPO/branches/main/config/excel/source_db.yml'
 )
-HANDLER = 'citora_ai_analytic.procedure.run'
+HANDLER = 'procedure.run'
 COMMENT = 'Validates a staged Excel workbook using a Git-versioned YAML contract and replaces RAW tables'
 EXECUTE AS OWNER;
 

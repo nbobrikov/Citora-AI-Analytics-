@@ -6,7 +6,12 @@ from typing import Any
 import pandas as pd
 from snowflake.snowpark import Session
 
-from citora_ai_analytic.config import ExcelContract
+try:
+    from citora_ai_analytic.config import ExcelContract
+except ModuleNotFoundError as error:
+    if error.name != "citora_ai_analytic":
+        raise
+    from config import ExcelContract
 
 IDENTIFIER_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
