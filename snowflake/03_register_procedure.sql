@@ -28,6 +28,7 @@ PACKAGES = (
     'snowflake-snowpark-python',
     'openpyxl',
     'pandas',
+    'pyarrow',
     'pydantic',
     'pyyaml'
 )
