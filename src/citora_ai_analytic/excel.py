@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from io import BytesIO
 from typing import Any
 
@@ -18,7 +19,7 @@ MAX_EXCEL_BYTES = 100 * 1024 * 1024
 def read_excel_from_stage(
     scoped_url: str,
     contract: ExcelContract,
-) -> dict[str, pd.DataFrame]:
+) -> tuple[dict[str, pd.DataFrame], str]:
     """Read and validate an Excel workbook from a Snowflake scoped file URL."""
     if not scoped_url.startswith("https://"):
         raise ValueError("Excel location must be a scoped URL created by BUILD_SCOPED_FILE_URL")
@@ -32,7 +33,7 @@ def read_excel_from_stage(
     if len(content) > MAX_EXCEL_BYTES:
         raise ValueError(f"Excel file exceeds the {MAX_EXCEL_BYTES} byte limit")
 
-    return read_excel_bytes(content, contract)
+    return read_excel_bytes(content, contract), hashlib.sha256(content).hexdigest()
 
 
 def read_excel_bytes(

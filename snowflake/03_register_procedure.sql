@@ -12,12 +12,12 @@ USE SCHEMA PLATFORM;
 DROP PROCEDURE IF EXISTS CITORA.PLATFORM.LOAD_EXCEL(
     VARCHAR,
     VARCHAR,
-    VARCHAR,
     VARCHAR
 );
 
 CREATE OR REPLACE PROCEDURE CITORA.PLATFORM.LOAD_EXCEL(
     EXCEL_SCOPED_URL VARCHAR,
+    SOURCE_FILE VARCHAR,
     TARGET_DATABASE VARCHAR,
     TARGET_SCHEMA VARCHAR
 )
@@ -40,10 +40,11 @@ IMPORTS = (
     '@CITORA.PLATFORM.CITORA_REPO/branches/main/config/excel/source_db.yml'
 )
 HANDLER = 'procedure.run'
-COMMENT = 'Validates a staged Excel workbook using a Git-versioned YAML contract and replaces RAW tables'
+COMMENT = 'Validates a staged Excel workbook and appends a traceable RAW history batch'
 EXECUTE AS OWNER;
 
 GRANT USAGE ON PROCEDURE CITORA.PLATFORM.LOAD_EXCEL(
+    VARCHAR,
     VARCHAR,
     VARCHAR,
     VARCHAR
@@ -62,11 +63,13 @@ GRANT USAGE ON PROCEDURE CITORA.PLATFORM.LOAD_EXCEL(
 --         @CITORA.PLATFORM.CITORA_RAW_STAGE,
 --         'files/source_db.xlsx'
 --     ),
+--     'source_db.xlsx',
 --     'CITORA',
 --     'RAW'
 -- );
 
 DESCRIBE PROCEDURE CITORA.PLATFORM.LOAD_EXCEL(
+    VARCHAR,
     VARCHAR,
     VARCHAR,
     VARCHAR
