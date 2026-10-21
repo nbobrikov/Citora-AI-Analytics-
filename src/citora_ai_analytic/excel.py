@@ -7,11 +7,16 @@ from typing import Any
 import pandas as pd
 
 try:
-    from citora_ai_analytic.config import ColumnConfig, ExcelContract, SheetConfig
+    from citora_ai_analytic.config import (
+        ColumnConfig,
+        ExcelContract,
+        FieldMappingContract,
+        SheetConfig,
+    )
 except ModuleNotFoundError as error:
     if error.name != "citora_ai_analytic":
         raise
-    from config import ColumnConfig, ExcelContract, SheetConfig
+    from config import ColumnConfig, ExcelContract, FieldMappingContract, SheetConfig
 
 MAX_EXCEL_BYTES = 100 * 1024 * 1024
 
@@ -19,6 +24,7 @@ MAX_EXCEL_BYTES = 100 * 1024 * 1024
 def read_excel_from_stage(
     scoped_url: str,
     contract: ExcelContract,
+    mapping: FieldMappingContract,
 ) -> tuple[dict[str, pd.DataFrame], str]:
     """Read and validate an Excel workbook from a Snowflake scoped file URL."""
     if not scoped_url.startswith("https://"):
@@ -33,7 +39,83 @@ def read_excel_from_stage(
     if len(content) > MAX_EXCEL_BYTES:
         raise ValueError(f"Excel file exceeds the {MAX_EXCEL_BYTES} byte limit")
 
-    return read_excel_bytes(content, contract), hashlib.sha256(content).hexdigest()
+    return (
+        read_mapped_excel_bytes(content, contract, mapping),
+        hashlib.sha256(content).hexdigest(),
+    )
+
+
+def read_mapped_excel_bytes(
+    content: bytes,
+    contract: ExcelContract,
+    mapping: FieldMappingContract,
+) -> dict[str, pd.DataFrame]:
+    """Read Excel bytes and normalize source columns to canonical field names."""
+    if not content:
+        raise ValueError("Excel file is empty")
+    if len(contract.workbook.sheets) != 1:
+        raise ValueError("A field mapping currently supports exactly one Excel sheet")
+
+    sheet = contract.workbook.sheets[0]
+    if mapping.dataset.source_table != sheet.target_table:
+        raise ValueError(
+            f"Mapping table {mapping.dataset.source_table!r} does not match "
+            f"contract table {sheet.target_table!r}"
+        )
+
+    with pd.ExcelFile(BytesIO(content), engine="openpyxl") as workbook:
+        if sheet.name not in workbook.sheet_names:
+            raise ValueError(f"Excel workbook is missing sheets: {[sheet.name]}")
+        source = pd.read_excel(
+            workbook,
+            sheet_name=sheet.name,
+            header=sheet.header_row - 1,
+            dtype=object,
+        )
+
+    normalized_columns: dict[str, list[str]] = {}
+    for column in source.columns:
+        normalized_columns.setdefault(_normalize_column_name(column), []).append(column)
+
+    result = pd.DataFrame(index=source.index)
+    missing: list[str] = []
+    for field in mapping.dataset.fields:
+        matches: list[str] = []
+        for source_name in field.source_names:
+            matches.extend(normalized_columns.get(_normalize_column_name(source_name), []))
+        matches = list(dict.fromkeys(matches))
+
+        if len(matches) > 1:
+            raise ValueError(
+                f"Multiple Excel columns match canonical field {field.canonical_name!r}: "
+                f"{matches}"
+            )
+        if not matches:
+            if field.required:
+                missing.append(
+                    f"{field.canonical_name} ({' | '.join(field.source_names)})"
+                )
+            else:
+                result[field.canonical_name] = pd.NA
+            continue
+
+        column = ColumnConfig(
+            name=field.canonical_name,
+            type=field.type,
+            nullable=field.nullable,
+            description=field.description,
+        )
+        result[field.canonical_name] = _cast_column(
+            source[matches[0]], column, sheet.name, sheet.header_row
+        )
+
+    if missing:
+        raise ValueError(f"Excel workbook is missing required fields: {missing}")
+    return {sheet.target_table: result}
+
+
+def _normalize_column_name(value: object) -> str:
+    return str(value).strip().casefold()
 
 
 def read_excel_bytes(

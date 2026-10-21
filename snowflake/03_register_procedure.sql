@@ -37,7 +37,8 @@ IMPORTS = (
     '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/citora_ai_analytic/config.py',
     '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/citora_ai_analytic/excel.py',
     '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/citora_ai_analytic/loader.py',
-    '@CITORA.PLATFORM.CITORA_REPO/branches/main/config/excel/source_db.yml'
+    '@CITORA.PLATFORM.CITORA_REPO/branches/main/config/excel/source_db.yml',
+    '@CITORA.PLATFORM.CITORA_REPO/branches/main/config/mappings/crm_deals.yml'
 )
 HANDLER = 'procedure.run'
 COMMENT = 'Validates a staged Excel workbook and appends a traceable RAW history batch'

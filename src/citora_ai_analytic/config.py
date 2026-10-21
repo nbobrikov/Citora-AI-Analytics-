@@ -164,6 +164,24 @@ def load_field_mapping(path: str | Path) -> FieldMappingContract:
     return parse_field_mapping(mapping_path.read_text(encoding="utf-8"))
 
 
+def load_field_mapping_from_import(
+    file_name: str = "crm_deals.yml",
+) -> FieldMappingContract:
+    """Read a field mapping attached through the procedure IMPORTS clause."""
+    if Path(file_name).name != file_name:
+        raise ValueError("Field mapping import must be a file name without a directory")
+
+    import_directory = sys._xoptions.get("snowflake_import_directory")
+    if not import_directory:
+        raise RuntimeError("Snowflake import directory is not available")
+
+    mapping_path = Path(import_directory) / file_name
+    if not mapping_path.is_file():
+        raise FileNotFoundError(f"Imported field mapping not found: {file_name}")
+
+    return parse_field_mapping(mapping_path.read_text(encoding="utf-8"))
+
+
 def load_excel_contract_from_import(file_name: str = "source_db.yml") -> ExcelContract:
     """Read a YAML contract attached through the procedure IMPORTS clause."""
     if Path(file_name).name != file_name:

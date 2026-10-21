@@ -7,7 +7,10 @@ from uuid import uuid4
 from snowflake.snowpark import Session
 
 try:
-    from citora_ai_analytic.config import load_excel_contract_from_import
+    from citora_ai_analytic.config import (
+        load_excel_contract_from_import,
+        load_field_mapping_from_import,
+    )
     from citora_ai_analytic.excel import read_excel_from_stage
     from citora_ai_analytic.loader import append_raw_tables
 except ModuleNotFoundError as error:
@@ -17,7 +20,7 @@ except ModuleNotFoundError as error:
     from excel import read_excel_from_stage
     from loader import append_raw_tables
 
-    from config import load_excel_contract_from_import
+    from config import load_excel_contract_from_import, load_field_mapping_from_import
 
 
 def run(
@@ -32,7 +35,8 @@ def run(
     load_id = str(uuid4())
 
     contract = load_excel_contract_from_import()
-    frames, file_hash = read_excel_from_stage(excel_scoped_url, contract)
+    mapping = load_field_mapping_from_import()
+    frames, file_hash = read_excel_from_stage(excel_scoped_url, contract, mapping)
     tables = append_raw_tables(
         session=session,
         frames=frames,
