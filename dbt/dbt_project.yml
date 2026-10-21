@@ -12,6 +12,7 @@ vars:
   recalculation_date_from: ""
   recalculation_date_to: ""
   conversion_period_days: 30
+  other_manager_label: Прочее
 
 models:
   citora_analytics:
@@ -24,3 +25,8 @@ models:
     marts:
       +materialized: table
       +schema: analytics
+
+seeds:
+  citora_analytics:
+    +schema: config
+    +quote_columns: false

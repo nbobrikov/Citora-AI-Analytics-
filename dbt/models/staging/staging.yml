@@ -42,3 +42,26 @@ models:
       - name: created_at
         data_tests:
           - not_null
+
+  - name: int_crm_applications
+    description: >-
+      Все заявки из разрешённых воронок. Повторяет getZayavkiDF с параметрами
+      unique=False и Samotok=False; менеджеры вне справочника получают значение
+      Прочее.
+    columns:
+      - name: application_id
+        data_tests:
+          - not_null
+          - unique
+      - name: manager
+        data_tests:
+          - not_null
+      - name: application_created_at
+        data_tests:
+          - not_null
+      - name: phone_number
+        data_tests:
+          - not_null
+      - name: application_sequence_number
+        data_tests:
+          - not_null
