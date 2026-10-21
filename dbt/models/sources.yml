@@ -8,7 +8,7 @@ sources:
     tables:
       - name: crm_deals
         identifier: CRM_DEALS
-        description: Все нормализованные строки всех успешных Excel-загрузок.
+        description: Исторические версии строк из всех Excel-загрузок.
       - name: load_history
         identifier: LOAD_HISTORY
         description: Журнал успешных загрузок Excel.

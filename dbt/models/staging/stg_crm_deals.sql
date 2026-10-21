@@ -1,17 +1,24 @@
-with latest_successful_load as (
-    select load_id
-    from {{ source('citora_raw', 'load_history') }}
-    where status = 'SUCCESS'
-    qualify row_number() over (
-        order by finished_at desc, started_at desc, load_id desc
-    ) = 1
+with source_data as (
+    select
+        raw.*,
+        history.finished_at as load_finished_at
+    from {{ source('citora_raw', 'crm_deals') }} as raw
+    inner join {{ source('citora_raw', 'load_history') }} as history
+        on raw."_LOAD_ID" = history.load_id
+    where history.status = 'SUCCESS'
 ),
 
-source_data as (
-    select raw.*
-    from {{ source('citora_raw', 'crm_deals') }} as raw
-    inner join latest_successful_load as latest
-        on raw."_LOAD_ID" = latest.load_id
+latest_deal_version as (
+    select *
+    from source_data
+    qualify row_number() over (
+        partition by "deal_id"
+        order by
+            load_finished_at desc,
+            "_LOADED_AT" desc,
+            "_SOURCE_ROW_NUMBER" desc,
+            "_LOAD_ID" desc
+    ) = 1
 ),
 
 renamed_and_cleaned as (
@@ -39,7 +46,7 @@ renamed_and_cleaned as (
         raw."_SOURCE_FILE"::varchar as source_file,
         raw."_SOURCE_ROW_NUMBER"::number as source_row_number,
         raw."_ROW_HASH"::varchar as row_hash
-    from source_data as raw
+    from latest_deal_version as raw
 )
 
 select *

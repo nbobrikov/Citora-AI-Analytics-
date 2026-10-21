@@ -3,8 +3,9 @@ version: 2
 models:
   - name: stg_crm_deals
     description: >-
-      Последняя успешная CRM-загрузка с эталонными именами, приведёнными
-      типами и нормализованными текстовыми полями.
+      Накопленный набор CRM-сделок из всех успешных загрузок. Для каждого
+      deal_id сохраняется самая свежая версия, после чего применяются
+      эталонные имена, типы и нормализация текстовых полей.
     columns:
       - name: deal_id
         description: Уникальный идентификатор исходной сделки.
@@ -26,7 +27,6 @@ models:
       - name: source_row_number
         data_tests:
           - not_null
-          - unique
 
   - name: int_crm_deals_prepared
     description: >-
