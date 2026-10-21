@@ -14,6 +14,8 @@ vars:
   conversion_period_days: 30
   other_manager_label: Прочее
   self_flow_manager_label: Самоток
+  other_attribution_label: Прочее
+  empty_attribution_label: Без разметки
 
 models:
   citora_analytics:
@@ -31,3 +33,12 @@ seeds:
   citora_analytics:
     +schema: config
     +quote_columns: false
+    utm_source_mapping:
+      +column_types:
+        priority: integer
+    utm_content_mapping:
+      +column_types:
+        priority: integer
+    promocode_mapping:
+      +column_types:
+        priority: integer
