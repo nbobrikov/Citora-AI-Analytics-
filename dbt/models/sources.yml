@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: citora_raw
+    description: Исторические снимки исходных CRM-данных, загруженные из Excel.
+    database: CITORA
+    schema: RAW
+    tables:
+      - name: crm_deals
+        identifier: CRM_DEALS
+        description: Все нормализованные строки всех успешных Excel-загрузок.
+      - name: load_history
+        identifier: LOAD_HISTORY
+        description: Журнал успешных загрузок Excel.

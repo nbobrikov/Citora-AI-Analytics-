@@ -1,0 +1,27 @@
+name: citora_analytics
+version: 1.0.0
+config-version: 2
+
+profile: citora_analytics
+
+model-paths: ["models"]
+test-paths: ["tests"]
+clean-targets: ["target", "dbt_packages", "logs"]
+
+vars:
+  report_date: ""
+  report_period: month
+  report_period_number: 12
+  conversion_period_days: 30
+
+models:
+  citora_analytics:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: analytics

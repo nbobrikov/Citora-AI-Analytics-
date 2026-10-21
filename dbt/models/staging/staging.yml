@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: stg_crm_deals
+    description: >-
+      Последняя успешная CRM-загрузка с эталонными именами, приведёнными
+      типами и нормализованными текстовыми полями.
+    columns:
+      - name: deal_id
+        description: Уникальный идентификатор исходной сделки.
+        data_tests:
+          - not_null
+          - unique
+      - name: funnel
+        data_tests:
+          - not_null
+      - name: manager
+        data_tests:
+          - not_null
+      - name: created_at
+        data_tests:
+          - not_null
+      - name: load_id
+        data_tests:
+          - not_null
+      - name: source_row_number
+        data_tests:
+          - not_null
+          - unique
+
+  - name: int_crm_deals_prepared
+    description: >-
+      Эквивалент результата prepare_df_for_converstion: очищенные данные,
+      ограниченные отчётной датой, периодом анализа и окном конверсии.
+    columns:
+      - name: deal_id
+        data_tests:
+          - not_null
+          - unique
+      - name: created_at
+        data_tests:
+          - not_null

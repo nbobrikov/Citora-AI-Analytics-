@@ -1,0 +1,12 @@
+citora_analytics:
+  target: prod
+  outputs:
+    prod:
+      type: snowflake
+      account: not_needed
+      user: not_needed
+      role: CITORA_TRANSFORMER
+      database: CITORA
+      schema: ANALYTICS
+      warehouse: CITORA_TRANSFORMING_WH
+      threads: 8
