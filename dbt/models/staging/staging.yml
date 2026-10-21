@@ -31,7 +31,9 @@ models:
   - name: int_crm_deals_prepared
     description: >-
       Эквивалент результата prepare_df_for_converstion: очищенные данные,
-      ограниченные отчётной датой, периодом анализа и окном конверсии.
+      по умолчанию за весь накопленный период. Необязательные переменные
+      recalculation_date_from и recalculation_date_to ограничивают пересчёт;
+      вокруг диапазона сохраняется запас на окно конверсии.
     columns:
       - name: deal_id
         data_tests:

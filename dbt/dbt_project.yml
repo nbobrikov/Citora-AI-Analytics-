@@ -9,9 +9,8 @@ test-paths: ["tests"]
 clean-targets: ["target", "dbt_packages", "logs"]
 
 vars:
-  report_date: ""
-  report_period: month
-  report_period_number: 12
+  recalculation_date_from: ""
+  recalculation_date_to: ""
   conversion_period_days: 30
 
 models:
