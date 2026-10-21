@@ -3,10 +3,15 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from citora_ai_analytic.config import load_excel_contract, parse_excel_contract
+from citora_ai_analytic.config import (
+    load_excel_contract,
+    load_field_mapping,
+    parse_excel_contract,
+)
 
 PROJECT_ROOT = Path(__file__).parents[1]
 CONTRACT_PATH = PROJECT_ROOT / "config" / "excel" / "source_db.yml"
+MAPPING_PATH = PROJECT_ROOT / "config" / "mappings" / "crm_deals.yml"
 
 
 def test_source_db_contract_is_valid() -> None:
@@ -73,3 +78,29 @@ workbook:
 
     with pytest.raises(ValidationError, match="unknown_property"):
         parse_excel_contract(yaml_content)
+
+
+def test_crm_deals_mapping_has_all_calculation_fields() -> None:
+    mapping = load_field_mapping(MAPPING_PATH)
+    fields = {field.canonical_name: field for field in mapping.dataset.fields}
+
+    assert set(fields) == {
+        "deal_id",
+        "contact_id",
+        "funnel",
+        "manager",
+        "created_at",
+        "phone_number",
+        "paid_at",
+        "utm_source",
+        "utm_content",
+        "promo_code",
+        "product",
+        "amount",
+    }
+    assert all(field.required for field in fields.values())
+    assert fields["deal_id"].nullable is False
+    assert fields["paid_at"].nullable is True
+    assert fields["utm_source"].nullable is True
+    assert fields["utm_content"].nullable is True
+    assert fields["promo_code"].nullable is True

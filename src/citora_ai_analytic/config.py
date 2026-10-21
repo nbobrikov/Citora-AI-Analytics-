@@ -70,6 +70,60 @@ class ExcelContract(BaseModel):
     workbook: WorkbookConfig
 
 
+class FieldMapping(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    canonical_name: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    source_names: list[str] = Field(min_length=1)
+    type: ColumnType
+    required: bool
+    nullable: bool
+    description: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_source_names(self) -> FieldMapping:
+        normalized = [name.strip().casefold() for name in self.source_names]
+        if any(not name for name in normalized):
+            raise ValueError("source names must not be empty")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("duplicate source names within field mapping")
+        return self
+
+
+class DatasetMapping(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    description: str = Field(min_length=1)
+    source_table: str = Field(pattern=r"^[A-Z][A-Z0-9_]*$")
+    fields: list[FieldMapping] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_fields_and_aliases(self) -> DatasetMapping:
+        canonical_names = [field.canonical_name for field in self.fields]
+        if len(canonical_names) != len(set(canonical_names)):
+            raise ValueError("duplicate canonical field names")
+
+        aliases: dict[str, str] = {}
+        for field in self.fields:
+            for source_name in field.source_names:
+                normalized = source_name.strip().casefold()
+                if normalized in aliases:
+                    raise ValueError(
+                        f"source name {source_name!r} is assigned to both "
+                        f"{aliases[normalized]!r} and {field.canonical_name!r}"
+                    )
+                aliases[normalized] = field.canonical_name
+        return self
+
+
+class FieldMappingContract(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version: Literal[1]
+    dataset: DatasetMapping
+
+
 def parse_excel_contract(content: str) -> ExcelContract:
     """Parse and validate an Excel contract from YAML text."""
     payload = yaml.safe_load(content)
@@ -92,6 +146,22 @@ def load_excel_contract(path: str | Path) -> ExcelContract:
 
     with contract_path.open(encoding="utf-8") as stream:
         return parse_excel_contract(stream.read())
+
+
+def parse_field_mapping(content: str) -> FieldMappingContract:
+    """Parse and validate a source-to-canonical field mapping."""
+    payload = yaml.safe_load(content)
+    if not isinstance(payload, dict):
+        raise ValueError("Field mapping must contain a YAML mapping")
+    return FieldMappingContract.model_validate(payload)
+
+
+def load_field_mapping(path: str | Path) -> FieldMappingContract:
+    """Read and validate a source-to-canonical field mapping file."""
+    mapping_path = Path(path)
+    if not mapping_path.is_file():
+        raise FileNotFoundError(f"Field mapping not found: {mapping_path}")
+    return parse_field_mapping(mapping_path.read_text(encoding="utf-8"))
 
 
 def load_excel_contract_from_import(file_name: str = "source_db.yml") -> ExcelContract:

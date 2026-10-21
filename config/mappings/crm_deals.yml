@@ -1,0 +1,108 @@
+version: 1
+
+dataset:
+  id: crm_deals
+  description: Соответствие колонок Excel эталонным полям расчётной модели.
+  source_table: CRM_DEALS
+
+  fields:
+    - canonical_name: deal_id
+      source_names:
+        - ID
+      type: integer
+      required: true
+      nullable: false
+      description: Уникальный идентификатор сделки.
+
+    - canonical_name: contact_id
+      source_names:
+        - "Контакт: ID"
+      type: integer
+      required: true
+      nullable: true
+      description: Идентификатор контакта.
+
+    - canonical_name: funnel
+      source_names:
+        - Воронка
+      type: string
+      required: true
+      nullable: false
+      description: Воронка сделки.
+
+    - canonical_name: manager
+      source_names:
+        - Ответственный
+      type: string
+      required: true
+      nullable: false
+      description: Ответственный менеджер.
+
+    - canonical_name: created_at
+      source_names:
+        - Дата создания
+      type: timestamp
+      required: true
+      nullable: false
+      description: Дата и время создания заявки или сделки.
+
+    - canonical_name: phone_number
+      source_names:
+        - Номер телефона контакта
+        - Телефон
+        - Номер телефона
+      type: string
+      required: true
+      nullable: true
+      description: Номер телефона, по которому заявки связываются с продажами.
+
+    - canonical_name: paid_at
+      source_names:
+        - Дата оплаты
+      type: timestamp
+      required: true
+      nullable: true
+      description: Дата и время оплаты.
+
+    - canonical_name: utm_source
+      source_names:
+        - UTM Source
+        - utm_source
+      type: string
+      required: true
+      nullable: true
+      description: Источник рекламного трафика.
+
+    - canonical_name: utm_content
+      source_names:
+        - UTM Content
+        - utm_content
+      type: string
+      required: true
+      nullable: true
+      description: Идентификатор или вариант рекламного контента.
+
+    - canonical_name: promo_code
+      source_names:
+        - Промокод
+        - promo_code
+      type: string
+      required: true
+      nullable: true
+      description: Промокод сделки.
+
+    - canonical_name: product
+      source_names:
+        - Продукт
+      type: string
+      required: true
+      nullable: true
+      description: Наименование продукта.
+
+    - canonical_name: amount
+      source_names:
+        - Сумма
+      type: decimal
+      required: true
+      nullable: true
+      description: Сумма продажи.
