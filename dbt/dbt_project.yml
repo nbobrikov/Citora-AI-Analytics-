@@ -13,6 +13,7 @@ vars:
   recalculation_date_to: ""
   conversion_period_days: 30
   other_manager_label: Прочее
+  self_flow_manager_label: Самоток
 
 models:
   citora_analytics:

@@ -88,3 +88,28 @@ models:
       - name: load_id
         data_tests:
           - not_null
+
+  - name: int_application_sales_matches
+    description: >-
+      Связывает каждую продажу с самой ранней подходящей заявкой того же
+      телефона в пределах conversion_period_days. Содержит также заявки без
+      продаж и продажи Самотока без заявок.
+    columns:
+      - name: sale_id
+        data_tests:
+          - unique
+      - name: match_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - matched
+                  - application_without_sale
+                  - sale_without_application
+      - name: is_unique
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
