@@ -13,30 +13,34 @@ SOURCE_EXCEL_PATH = PROJECT_ROOT.parent / "Исходные данные" / "sou
 MAPPING_PATH = PROJECT_ROOT / "config" / "mappings" / "crm_deals.yml"
 
 
-def test_source_excel_matches_yaml_contract() -> None:
+def test_source_excel_matches_field_mapping() -> None:
     if not SOURCE_EXCEL_PATH.is_file():
         pytest.skip(f"Source workbook is not available: {SOURCE_EXCEL_PATH}")
 
     contract = load_excel_contract(CONTRACT_PATH)
-    frames = read_excel_bytes(SOURCE_EXCEL_PATH.read_bytes(), contract)
+    mapping = load_field_mapping(MAPPING_PATH)
+    frames = read_mapped_excel_bytes(
+        SOURCE_EXCEL_PATH.read_bytes(),
+        contract,
+        mapping,
+    )
 
     assert set(frames) == {"CRM_DEALS"}
 
     deals = frames["CRM_DEALS"]
-    expected_columns = [
-        column.name for column in contract.workbook.sheets[0].columns
-    ]
+    expected_columns = [field.canonical_name for field in mapping.dataset.fields]
 
-    assert deals.shape == (15_183, 19)
+    assert deals.shape == (15_183, 12)
     assert list(deals.columns) == expected_columns
-    assert deals["ID"].dtype == pd.Int64Dtype()
-    assert deals["ID"].notna().all()
-    assert deals["ID"].is_unique
-    assert pd.api.types.is_datetime64_any_dtype(deals["Дата создания"])
-    assert deals["Дата создания"].notna().all()
-    assert pd.api.types.is_datetime64_any_dtype(deals["Дата оплаты"])
-    assert isinstance(deals["Номер телефона контакта"].dtype, pd.StringDtype)
-    assert isinstance(deals["UTM Term"].dtype, pd.StringDtype)
+    assert deals["deal_id"].dtype == pd.Int64Dtype()
+    assert deals["deal_id"].notna().all()
+    assert deals["deal_id"].is_unique
+    assert pd.api.types.is_datetime64_any_dtype(deals["created_at"])
+    assert deals["created_at"].notna().all()
+    assert pd.api.types.is_datetime64_any_dtype(deals["paid_at"])
+    assert isinstance(deals["phone_number"].dtype, pd.StringDtype)
+    assert isinstance(deals["utm_source"].dtype, pd.StringDtype)
+    assert isinstance(deals["product"].dtype, pd.StringDtype)
 
 
 def test_empty_excel_file_is_rejected() -> None:

@@ -39,12 +39,12 @@ CALL CITORA.PLATFORM.LOAD_EXCEL(
 SELECT
     COUNT(*) AS row_count,
     COUNT(DISTINCT "_LOAD_ID") AS load_count,
-    COUNT(DISTINCT "ID") AS distinct_id_count,
-    COUNT_IF("ID" IS NULL) AS null_id_count,
-    COUNT_IF("Дата создания" IS NULL) AS null_created_at_count,
-    MIN("Дата создания") AS first_created_at,
-    MAX("Дата создания") AS last_created_at,
-    COUNT_IF("Дата оплаты" IS NOT NULL) AS paid_deal_count
+    COUNT(DISTINCT "deal_id") AS distinct_deal_id_count,
+    COUNT_IF("deal_id" IS NULL) AS null_deal_id_count,
+    COUNT_IF("created_at" IS NULL) AS null_created_at_count,
+    MIN("created_at") AS first_created_at,
+    MAX("created_at") AS last_created_at,
+    COUNT_IF("paid_at" IS NOT NULL) AS paid_deal_count
 FROM CITORA.RAW.CRM_DEALS;
 
 SELECT
