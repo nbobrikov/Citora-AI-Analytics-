@@ -102,17 +102,15 @@ models:
         data_tests:
           - not_null
           - accepted_values:
-              arguments:
-                values:
-                  - matched
-                  - application_without_sale
-                  - sale_without_application
+              values:
+                - matched
+                - application_without_sale
+                - sale_without_application
       - name: is_unique
         data_tests:
           - not_null
           - accepted_values:
-              arguments:
-                values: [0, 1]
+              values: [0, 1]
 
   - name: int_crm_deal_attribution
     description: >-
