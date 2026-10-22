@@ -1,0 +1,21 @@
+-- Load versioned attribution dictionaries into CITORA.CONFIG.
+-- Run after 07_register_dbt_project.sql succeeds.
+
+USE ROLE CITORA_TRANSFORMER;
+USE WAREHOUSE CITORA_TRANSFORMING_WH;
+USE DATABASE CITORA;
+USE SCHEMA PLATFORM;
+
+EXECUTE DBT PROJECT CITORA.PLATFORM.CITORA_DBT_PROJECT
+    ARGS = 'seed --target prod --full-refresh';
+
+-- Expected counts: 14 utm_source rows, 12 utm_content rows, 91 promocodes.
+SELECT 'UTM_SOURCE_MAPPING' AS dictionary, COUNT(*) AS row_count
+FROM CITORA.CONFIG.UTM_SOURCE_MAPPING
+UNION ALL
+SELECT 'UTM_CONTENT_MAPPING' AS dictionary, COUNT(*) AS row_count
+FROM CITORA.CONFIG.UTM_CONTENT_MAPPING
+UNION ALL
+SELECT 'PROMOCODE_MAPPING' AS dictionary, COUNT(*) AS row_count
+FROM CITORA.CONFIG.PROMOCODE_MAPPING
+ORDER BY dictionary;
