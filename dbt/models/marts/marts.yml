@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: fct_application_sales
+    description: >-
+      Финальная физическая отчетная таблица со связками заявок и продаж.
+      Зерно таблицы — одна связка заявки и продажи; несвязанные заявки и
+      продажи также представлены отдельными строками.
+    columns:
+      - name: reporting_row_id
+        description: Стабильный технический идентификатор отчетной строки.
+        data_tests:
+          - not_null
+          - unique
+      - name: match_type
+        description: Тип связи заявки и продажи.
+        data_tests:
+          - not_null
+          - accepted_values:
+              values:
+                - matched
+                - application_without_sale
+                - sale_without_application
+      - name: is_unique
+        description: Признак первой продажи, связанной с заявкой.
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+      - name: final_segment
+        description: Итоговый сегмент для отчетности.
+        data_tests:
+          - not_null
+      - name: final_source
+        description: Итоговый источник для отчетности.
+        data_tests:
+          - not_null
+      - name: dbt_built_at
+        description: Время построения физической отчетной таблицы.
+        data_tests:
+          - not_null
