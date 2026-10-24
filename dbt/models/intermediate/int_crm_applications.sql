@@ -43,7 +43,6 @@ applications as (
     where deals.paid_at is null
       and deals.phone_number is not null
       and deals.phone_number != ''
-      and deals.phone_number != '0'
 )
 
 select *
