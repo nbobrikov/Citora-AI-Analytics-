@@ -15,6 +15,14 @@ models:
       - name: funnel
         data_tests:
           - not_null
+      - name: contact_id
+        description: Идентификатор контакта; 0 означает отсутствие значения в источнике.
+        data_tests:
+          - not_null
+      - name: phone_number
+        description: Номер телефона; строка 0 означает отсутствие значения в источнике.
+        data_tests:
+          - not_null
       - name: manager
         data_tests:
           - not_null

@@ -24,11 +24,14 @@ latest_deal_version as (
 renamed_and_cleaned as (
     select
         "deal_id"::number as deal_id,
-        "contact_id"::number as contact_id,
+        coalesce("contact_id"::number, 0) as contact_id,
         "funnel"::varchar as funnel,
         "manager"::varchar as manager,
         "created_at"::timestamp_ntz as created_at,
-        lower("phone_number"::varchar) as phone_number,
+        coalesce(
+            nullif(trim(lower("phone_number"::varchar)), ''),
+            '0'
+        ) as phone_number,
         "paid_at"::timestamp_ntz as paid_at,
         case
             when "utm_content" is null then null
