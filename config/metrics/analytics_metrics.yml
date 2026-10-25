@@ -170,3 +170,50 @@ metrics:
           ELSE 0
         END)
       )
+
+  - id: self_flow_sales_share
+    name: Доля самотока в продажах
+    description: Доля продаж без связанной заявки среди всех продаж периода.
+    type: ratio
+    format: percent
+    time_dimension: paid_at
+    additivity: non_additive
+    dimensions:
+      - final_source
+      - final_segment
+    filters:
+      - sale_id is not null
+    numerator:
+      name: Продажи из самотока
+      expression: sale_id
+      aggregation: count
+      filters:
+        - match_type = 'sale_without_application'
+        - manager = 'Самоток'
+      sql_template: >-
+        COUNT(CASE
+          WHEN sale_id IS NOT NULL
+            AND match_type = 'sale_without_application'
+            AND manager = 'Самоток'
+          THEN 1
+        END)
+    denominator:
+      name: Все продажи
+      expression: sale_id
+      aggregation: count
+      sql_template: COUNT(CASE WHEN sale_id IS NOT NULL THEN 1 END)
+    business_rules:
+      - Отчетный период фильтруется по дате оплаты.
+      - Самотоком считается продажа без связанной заявки.
+      - Значение 0.25 отображается как 25 процентов.
+      - Метрика является отношением и не суммируется между группами.
+    sql_template: >-
+      DIV0(
+        COUNT(CASE
+          WHEN sale_id IS NOT NULL
+            AND match_type = 'sale_without_application'
+            AND manager = 'Самоток'
+          THEN 1
+        END),
+        COUNT(CASE WHEN sale_id IS NOT NULL THEN 1 END)
+      )

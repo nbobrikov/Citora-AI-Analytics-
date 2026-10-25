@@ -85,3 +85,22 @@ def test_application_to_sale_conversion_metric_definition() -> None:
     assert conversion["denominator"]["aggregation"] == "sum"
     assert conversion["denominator"]["expression"] == "is_unique"
     assert "DIV0" in conversion["sql_template"]
+
+
+def test_self_flow_sales_share_metric_definition() -> None:
+    payload = yaml.safe_load(METRICS_PATH.read_text(encoding="utf-8"))
+    metrics = {metric["id"]: metric for metric in payload["metrics"]}
+    self_flow_share = metrics["self_flow_sales_share"]
+
+    assert self_flow_share["type"] == "ratio"
+    assert self_flow_share["format"] == "percent"
+    assert self_flow_share["time_dimension"] == "paid_at"
+    assert self_flow_share["additivity"] == "non_additive"
+    assert self_flow_share["dimensions"] == ["final_source", "final_segment"]
+    assert self_flow_share["filters"] == ["sale_id is not null"]
+    assert self_flow_share["numerator"]["filters"] == [
+        "match_type = 'sale_without_application'",
+        "manager = 'Самоток'",
+    ]
+    assert self_flow_share["denominator"]["expression"] == "sale_id"
+    assert "DIV0" in self_flow_share["sql_template"]
