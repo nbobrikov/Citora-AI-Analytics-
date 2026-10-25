@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS CITORA.CONFIG.DICTIONARY_ENTRIES (
 
 -- The existing seed-based dictionary starts unclaimed. The first authenticated
 -- Citora user opening Dictionaries claims it with their e-mail address.
-SET LEGACY_DICTIONARY_ID = UUID_STRING();
+SET LEGACY_DICTIONARY_ID = 'citora-legacy-default-v1';
 
 INSERT INTO CITORA.CONFIG.DICTIONARY_SETS (
     DICTIONARY_ID, OWNER_EMAIL, DICTIONARY_NAME, DESCRIPTION, IS_DEFAULT
