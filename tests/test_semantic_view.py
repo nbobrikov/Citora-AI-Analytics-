@@ -47,3 +47,12 @@ def test_semantic_deployment_embeds_the_versioned_yaml() -> None:
     assert len(sql_parts) == 5
     assert sql_parts[1].strip() == yaml_specification
     assert sql_parts[3].strip() == yaml_specification
+
+
+def test_mixed_metric_periods_keep_their_own_date_dimensions() -> None:
+    semantic_model = yaml.safe_load(SEMANTIC_VIEW_PATH.read_text(encoding="utf-8"))
+    instructions = semantic_model["module_custom_instructions"]["sql_generation"]
+
+    assert "APPLICATION_CREATED_AT" in instructions
+    assert "PAID_AT" in instructions
+    assert "separate semantic queries or CTEs" in instructions

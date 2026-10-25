@@ -234,7 +234,12 @@ module_custom_instructions:
     Filter LEADS, APPLICATIONS_COUNT, APPLICATION_TO_SALE_CONVERSION,
     AVERAGE_CONVERSION_TIME, and MARKED_APPLICATIONS_SHARE by
     APPLICATION_CREATED_AT. Filter SALES_COUNT and SELF_FLOW_SALES_SHARE by
-    PAID_AT. Ratios are stored as fractions: format 0.25 as 25% for users.
+    PAID_AT. This rule defines what a user means by a reporting period such as
+    "March 2025". When one request contains metrics from both date families,
+    apply each metric family's own date filter; do not apply one shared date
+    dimension to all metrics. Generate separate semantic queries or CTEs and
+    combine their results when necessary. Ratios are stored as fractions:
+    format 0.25 as 25% for users.
     Do not sum non-additive metrics across sources, segments, managers, or time.
     For conversion metrics, include sales that occurred after the reporting
     period when they are already linked to an application by the analytical
