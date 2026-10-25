@@ -69,6 +69,17 @@ tables:
         expr: CREATED_BY
         data_type: VARCHAR
 
+      - name: DICTIONARY_VISIBILITY
+        synonyms:
+          - видимость справочника
+        description: PRIVATE — только владелец; PUBLIC — доступен всем пользователям.
+        expr: VISIBILITY
+        data_type: VARCHAR
+        is_enum: true
+        sample_values:
+          - PRIVATE
+          - PUBLIC
+
       - name: RECORD_TYPE
         synonyms:
           - тип события
@@ -344,6 +355,17 @@ tables:
         description: E-mail пользователя, который создал или импортировал справочник.
         expr: CREATED_BY
         data_type: VARCHAR
+
+      - name: DICTIONARY_VISIBILITY
+        synonyms:
+          - видимость справочника
+        description: PRIVATE — только владелец; PUBLIC — доступен всем пользователям.
+        expr: VISIBILITY
+        data_type: VARCHAR
+        is_enum: true
+        sample_values:
+          - PRIVATE
+          - PUBLIC
 
       - name: RECORD_TYPE
         synonyms:
