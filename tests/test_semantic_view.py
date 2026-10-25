@@ -18,7 +18,7 @@ def test_semantic_view_contains_catalog_metrics() -> None:
     assert table["base_table"] == {
         "database": "CITORA",
         "schema": "ANALYTICS",
-        "table": "FCT_REPORTING_METRICS",
+        "table": "V_REPORTING_METRICS_ENRICHED",
     }
     assert metric_names == {
         "LEADS",
@@ -55,3 +55,4 @@ def test_mixed_metrics_use_one_reporting_date() -> None:
 
     assert "Always filter every requested metric by REPORT_DATE" in instructions
     assert "A single REPORT_DATE" in instructions
+    assert "Always filter by DICTIONARY_ID" in instructions

@@ -12,7 +12,7 @@ def test_leads_metric_definition() -> None:
     assert payload["version"] == 1
     assert payload["catalog"]["dataset"]["database"] == "CITORA"
     assert payload["catalog"]["dataset"]["schema"] == "ANALYTICS"
-    assert payload["catalog"]["dataset"]["table"] == "FCT_REPORTING_METRICS"
+    assert payload["catalog"]["dataset"]["table"] == "V_REPORTING_METRICS_ENRICHED"
 
     metrics = {metric["id"]: metric for metric in payload["metrics"]}
     leads = metrics["leads"]
@@ -52,10 +52,7 @@ def test_applications_count_metric_definition() -> None:
         "final_segment",
         "manager",
     ]
-    assert applications["filters"] == [
-        "record_type = 'APPLICATION'",
-        "manager != 'Самоток'",
-    ]
+    assert applications["filters"] == ["record_type = 'APPLICATION'"]
 
 
 def test_application_to_sale_conversion_metric_definition() -> None:
@@ -96,7 +93,6 @@ def test_self_flow_sales_share_metric_definition() -> None:
     assert self_flow_share["filters"] == ["record_type = 'SALE'"]
     assert self_flow_share["numerator"]["filters"] == [
         "match_type = 'sale_without_application'",
-        "manager = 'Самоток'",
     ]
     assert self_flow_share["denominator"]["expression"] == "sale_id"
     assert "DIV0" in self_flow_share["sql_template"]
@@ -124,7 +120,6 @@ def test_average_conversion_time_metric_definition() -> None:
     assert average_time["filters"] == [
         "record_type = 'APPLICATION'",
         "match_type = 'matched'",
-        "manager != 'Самоток'",
     ]
     assert "AVG" in average_time["sql_template"]
 
@@ -143,10 +138,7 @@ def test_marked_applications_share_metric_definition() -> None:
         "final_segment",
         "manager",
     ]
-    assert marked_share["filters"] == [
-        "record_type = 'APPLICATION'",
-        "manager != 'Самоток'",
-    ]
+    assert marked_share["filters"] == ["record_type = 'APPLICATION'"]
     assert marked_share["numerator"]["filters"] == [
         "final_segment != 'Без разметки' or final_source != 'Без разметки'"
     ]

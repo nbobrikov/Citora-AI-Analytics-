@@ -8,7 +8,7 @@ catalog:
   dataset:
     database: CITORA
     schema: ANALYTICS
-    table: FCT_REPORTING_METRICS
+    table: V_REPORTING_METRICS_ENRICHED
     grain: >-
       Одно отчетное событие: APPLICATION на заявку или SALE на продажу.
 
@@ -87,7 +87,6 @@ metrics:
       - manager
     filters:
       - record_type = 'APPLICATION'
-      - manager != 'Самоток'
     business_rules:
       - Каждая заявка представлена ровно одной записью APPLICATION.
       - Заявка без продажи учитывается в расчете.
@@ -98,7 +97,6 @@ metrics:
     sql_template: >-
       SUM(CASE
         WHEN record_type = 'APPLICATION'
-          AND manager != 'Самоток'
         THEN 1
         ELSE 0
       END)
@@ -121,7 +119,6 @@ metrics:
       - manager
     filters:
       - record_type = 'APPLICATION'
-      - manager != 'Самоток'
     numerator:
       name: Продажи по заявкам периода
       expression: matched_sales_count
@@ -129,7 +126,6 @@ metrics:
       sql_template: >-
         SUM(CASE
           WHEN record_type = 'APPLICATION'
-            AND manager != 'Самоток'
           THEN matched_sales_count
           ELSE 0
         END)
@@ -140,7 +136,6 @@ metrics:
       sql_template: >-
         SUM(CASE
           WHEN record_type = 'APPLICATION'
-            AND manager != 'Самоток'
           THEN 1
           ELSE 0
         END)
@@ -159,13 +154,11 @@ metrics:
       DIV0(
         SUM(CASE
           WHEN record_type = 'APPLICATION'
-            AND manager != 'Самоток'
           THEN matched_sales_count
           ELSE 0
         END),
         SUM(CASE
           WHEN record_type = 'APPLICATION'
-            AND manager != 'Самоток'
           THEN 1
           ELSE 0
         END)
@@ -189,12 +182,10 @@ metrics:
       aggregation: count
       filters:
         - match_type = 'sale_without_application'
-        - manager = 'Самоток'
       sql_template: >-
         COUNT(CASE
           WHEN record_type = 'SALE'
             AND match_type = 'sale_without_application'
-            AND manager = 'Самоток'
           THEN 1
         END)
     denominator:
@@ -212,7 +203,6 @@ metrics:
         COUNT(CASE
           WHEN record_type = 'SALE'
             AND match_type = 'sale_without_application'
-            AND manager = 'Самоток'
           THEN 1
         END),
         COUNT(CASE WHEN record_type = 'SALE' THEN 1 END)
@@ -238,7 +228,6 @@ metrics:
     filters:
       - record_type = 'APPLICATION'
       - match_type = 'matched'
-      - manager != 'Самоток'
     business_rules:
       - Отчетный период фильтруется по дате создания заявки.
       - Для каждой реализованной заявки учитывается только первая продажа.
@@ -255,7 +244,6 @@ metrics:
       AVG(CASE
         WHEN record_type = 'APPLICATION'
           AND match_type = 'matched'
-          AND manager != 'Самоток'
         THEN conversion_period_days
       END)
 
@@ -274,7 +262,6 @@ metrics:
       - manager
     filters:
       - record_type = 'APPLICATION'
-      - manager != 'Самоток'
     numerator:
       name: Размеченные заявки
       expression: reporting_event_id
@@ -284,7 +271,6 @@ metrics:
       sql_template: >-
         SUM(CASE
           WHEN record_type = 'APPLICATION'
-            AND manager != 'Самоток'
             AND (
               final_segment != 'Без разметки'
               OR final_source != 'Без разметки'
@@ -299,7 +285,6 @@ metrics:
       sql_template: >-
         SUM(CASE
           WHEN record_type = 'APPLICATION'
-            AND manager != 'Самоток'
           THEN 1
           ELSE 0
         END)
@@ -317,7 +302,6 @@ metrics:
       DIV0(
         SUM(CASE
           WHEN record_type = 'APPLICATION'
-            AND manager != 'Самоток'
             AND (
               final_segment != 'Без разметки'
               OR final_source != 'Без разметки'
@@ -327,7 +311,6 @@ metrics:
         END),
         SUM(CASE
           WHEN record_type = 'APPLICATION'
-            AND manager != 'Самоток'
           THEN 1
           ELSE 0
         END)

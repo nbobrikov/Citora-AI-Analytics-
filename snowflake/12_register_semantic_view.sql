@@ -32,12 +32,27 @@ tables:
     base_table:
       database: CITORA
       schema: ANALYTICS
-      table: FCT_REPORTING_METRICS
+      table: V_REPORTING_METRICS_ENRICHED
     primary_key:
       columns:
         - REPORTING_EVENT_ID
 
     dimensions:
+      - name: DICTIONARY_ID
+        synonyms:
+          - справочник
+          - dictionary
+        description: Идентификатор пользовательского справочника, обязательный для фильтрации.
+        expr: DICTIONARY_ID
+        data_type: VARCHAR
+
+      - name: OWNER_EMAIL
+        synonyms:
+          - владелец справочника
+        description: E-mail владельца пользовательского справочника.
+        expr: OWNER_EMAIL
+        data_type: VARCHAR
+
       - name: RECORD_TYPE
         synonyms:
           - тип события
@@ -69,7 +84,7 @@ tables:
         synonyms:
           - менеджер
           - ответственный
-        description: Менеджер заявки; для продаж без заявки используется Самоток.
+        description: Менеджер после применения выбранного справочника.
         expr: MANAGER
         data_type: VARCHAR
 
@@ -157,7 +172,6 @@ tables:
         expr: >-
           SUM(CASE
             WHEN RECORD_TYPE = 'APPLICATION'
-              AND MANAGER != 'Самоток'
             THEN 1
             ELSE 0
           END)
@@ -174,13 +188,11 @@ tables:
           DIV0(
             SUM(CASE
               WHEN RECORD_TYPE = 'APPLICATION'
-                AND MANAGER != 'Самоток'
               THEN MATCHED_SALES_COUNT
               ELSE 0
             END),
             SUM(CASE
               WHEN RECORD_TYPE = 'APPLICATION'
-                AND MANAGER != 'Самоток'
               THEN 1
               ELSE 0
             END)
@@ -197,7 +209,6 @@ tables:
             COUNT(CASE
               WHEN RECORD_TYPE = 'SALE'
                 AND MATCH_TYPE = 'sale_without_application'
-                AND MANAGER = 'Самоток'
               THEN 1
             END),
             COUNT(CASE WHEN RECORD_TYPE = 'SALE' THEN 1 END)
@@ -214,7 +225,6 @@ tables:
           AVG(CASE
             WHEN RECORD_TYPE = 'APPLICATION'
               AND MATCH_TYPE = 'matched'
-              AND MANAGER != 'Самоток'
             THEN CONVERSION_PERIOD_DAYS
           END)
 
@@ -229,7 +239,6 @@ tables:
           DIV0(
             SUM(CASE
               WHEN RECORD_TYPE = 'APPLICATION'
-                AND MANAGER != 'Самоток'
                 AND (
                   FINAL_SEGMENT != 'Без разметки'
                   OR FINAL_SOURCE != 'Без разметки'
@@ -239,7 +248,6 @@ tables:
             END),
             SUM(CASE
               WHEN RECORD_TYPE = 'APPLICATION'
-                AND MANAGER != 'Самоток'
               THEN 1
               ELSE 0
             END)
@@ -248,6 +256,8 @@ tables:
 module_custom_instructions:
   sql_generation: |
     Interpret all reporting dates in the Europe/Berlin time zone.
+    Always filter by DICTIONARY_ID when it is supplied in the user context.
+    Never combine rows from different DICTIONARY_ID values in one calculation.
     Always filter every requested metric by REPORT_DATE when the user specifies
     a reporting period. REPORT_DATE already represents APPLICATION_CREATED_AT
     for application metrics and PAID_AT for sales metrics. A single REPORT_DATE
@@ -282,12 +292,27 @@ tables:
     base_table:
       database: CITORA
       schema: ANALYTICS
-      table: FCT_REPORTING_METRICS
+      table: V_REPORTING_METRICS_ENRICHED
     primary_key:
       columns:
         - REPORTING_EVENT_ID
 
     dimensions:
+      - name: DICTIONARY_ID
+        synonyms:
+          - справочник
+          - dictionary
+        description: Идентификатор пользовательского справочника, обязательный для фильтрации.
+        expr: DICTIONARY_ID
+        data_type: VARCHAR
+
+      - name: OWNER_EMAIL
+        synonyms:
+          - владелец справочника
+        description: E-mail владельца пользовательского справочника.
+        expr: OWNER_EMAIL
+        data_type: VARCHAR
+
       - name: RECORD_TYPE
         synonyms:
           - тип события
@@ -319,7 +344,7 @@ tables:
         synonyms:
           - менеджер
           - ответственный
-        description: Менеджер заявки; для продаж без заявки используется Самоток.
+        description: Менеджер после применения выбранного справочника.
         expr: MANAGER
         data_type: VARCHAR
 
@@ -407,7 +432,6 @@ tables:
         expr: >-
           SUM(CASE
             WHEN RECORD_TYPE = 'APPLICATION'
-              AND MANAGER != 'Самоток'
             THEN 1
             ELSE 0
           END)
@@ -424,13 +448,11 @@ tables:
           DIV0(
             SUM(CASE
               WHEN RECORD_TYPE = 'APPLICATION'
-                AND MANAGER != 'Самоток'
               THEN MATCHED_SALES_COUNT
               ELSE 0
             END),
             SUM(CASE
               WHEN RECORD_TYPE = 'APPLICATION'
-                AND MANAGER != 'Самоток'
               THEN 1
               ELSE 0
             END)
@@ -447,7 +469,6 @@ tables:
             COUNT(CASE
               WHEN RECORD_TYPE = 'SALE'
                 AND MATCH_TYPE = 'sale_without_application'
-                AND MANAGER = 'Самоток'
               THEN 1
             END),
             COUNT(CASE WHEN RECORD_TYPE = 'SALE' THEN 1 END)
@@ -464,7 +485,6 @@ tables:
           AVG(CASE
             WHEN RECORD_TYPE = 'APPLICATION'
               AND MATCH_TYPE = 'matched'
-              AND MANAGER != 'Самоток'
             THEN CONVERSION_PERIOD_DAYS
           END)
 
@@ -479,7 +499,6 @@ tables:
           DIV0(
             SUM(CASE
               WHEN RECORD_TYPE = 'APPLICATION'
-                AND MANAGER != 'Самоток'
                 AND (
                   FINAL_SEGMENT != 'Без разметки'
                   OR FINAL_SOURCE != 'Без разметки'
@@ -489,7 +508,6 @@ tables:
             END),
             SUM(CASE
               WHEN RECORD_TYPE = 'APPLICATION'
-                AND MANAGER != 'Самоток'
               THEN 1
               ELSE 0
             END)
@@ -498,6 +516,8 @@ tables:
 module_custom_instructions:
   sql_generation: |
     Interpret all reporting dates in the Europe/Berlin time zone.
+    Always filter by DICTIONARY_ID when it is supplied in the user context.
+    Never combine rows from different DICTIONARY_ID values in one calculation.
     Always filter every requested metric by REPORT_DATE when the user specifies
     a reporting period. REPORT_DATE already represents APPLICATION_CREATED_AT
     for application metrics and PAID_AT for sales metrics. A single REPORT_DATE
