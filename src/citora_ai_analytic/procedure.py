@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -54,6 +55,18 @@ def run(
             uploaded_by=uploaded_by,
         )
     except Exception as error:
+        duplicate = re.search(
+            r"already loaded successfully with load ID ([0-9a-f-]{36})",
+            str(error),
+            flags=re.IGNORECASE,
+        )
+        if duplicate:
+            return {
+                "status": "duplicate",
+                "source_file": source_file,
+                "existing_load_id": duplicate.group(1),
+                "message": "This Excel file was already loaded successfully",
+            }
         session.sql(
             f"""
             INSERT INTO {database}.{raw_schema}.LOAD_HISTORY (
