@@ -28,13 +28,13 @@ models:
           - accepted_values:
               values: [0, 1]
       - name: final_segment
-        description: Итоговый сегмент для отчетности.
-        data_tests:
-          - not_null
+        description: Исходный utm_content, ещё не обработанный справочником.
       - name: final_source
-        description: Итоговый источник для отчетности.
-        data_tests:
-          - not_null
+        description: Исходный utm_source, ещё не обработанный справочником.
+      - name: application_promo
+        description: Промокод заявки.
+      - name: sale_promo
+        description: Промокод продажи.
       - name: dbt_built_at
         description: Время построения физической отчетной таблицы.
         data_tests:

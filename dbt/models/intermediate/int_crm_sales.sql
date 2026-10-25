@@ -12,6 +12,10 @@ sales as (
     select
         deals.deal_id as sale_id,
         deals.contact_id as sale_contact_id,
+        deals.manager as sale_manager,
+        deals.utm_source as sale_source,
+        deals.utm_content as sale_segment,
+        deals.promo_code as sale_promo,
         deals.paid_at,
         deals.phone_number,
         deals.amount,
