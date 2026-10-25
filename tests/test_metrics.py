@@ -133,3 +133,29 @@ def test_average_conversion_time_metric_definition() -> None:
         "manager != 'Самоток'",
     ]
     assert "AVG" in average_time["sql_template"]
+
+
+def test_marked_applications_share_metric_definition() -> None:
+    payload = yaml.safe_load(METRICS_PATH.read_text(encoding="utf-8"))
+    metrics = {metric["id"]: metric for metric in payload["metrics"]}
+    marked_share = metrics["marked_applications_share"]
+
+    assert marked_share["type"] == "ratio"
+    assert marked_share["format"] == "percent"
+    assert marked_share["time_dimension"] == "application_created_at"
+    assert marked_share["additivity"] == "non_additive"
+    assert marked_share["dimensions"] == [
+        "final_source",
+        "final_segment",
+        "manager",
+    ]
+    assert marked_share["filters"] == [
+        "application_id is not null",
+        "match_type != 'sale_without_application'",
+        "manager != 'Самоток'",
+    ]
+    assert marked_share["numerator"]["filters"] == [
+        "final_segment != 'Без разметки' or final_source != 'Без разметки'"
+    ]
+    assert marked_share["denominator"]["expression"] == "is_unique"
+    assert "DIV0" in marked_share["sql_template"]

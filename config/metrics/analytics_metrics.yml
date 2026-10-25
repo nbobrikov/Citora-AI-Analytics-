@@ -262,3 +262,80 @@ metrics:
           AND manager != 'Самоток'
         THEN conversion_period_days
       END)
+
+  - id: marked_applications_share
+    name: Доля размеченных заявок
+    description: >-
+      Доля заявок, у которых заполнен итоговый сегмент и/или итоговый источник,
+      среди всех заявок отчетного периода.
+    type: ratio
+    format: percent
+    time_dimension: application_created_at
+    additivity: non_additive
+    dimensions:
+      - final_source
+      - final_segment
+      - manager
+    filters:
+      - application_id is not null
+      - match_type != 'sale_without_application'
+      - manager != 'Самоток'
+    numerator:
+      name: Размеченные заявки
+      expression: is_unique
+      aggregation: sum
+      filters:
+        - final_segment != 'Без разметки' or final_source != 'Без разметки'
+      sql_template: >-
+        SUM(CASE
+          WHEN application_id IS NOT NULL
+            AND manager != 'Самоток'
+            AND is_unique = 1
+            AND (
+              final_segment != 'Без разметки'
+              OR final_source != 'Без разметки'
+            )
+          THEN 1
+          ELSE 0
+        END)
+    denominator:
+      name: Все заявки
+      expression: is_unique
+      aggregation: sum
+      sql_template: >-
+        SUM(CASE
+          WHEN application_id IS NOT NULL
+            AND manager != 'Самоток'
+          THEN is_unique
+          ELSE 0
+        END)
+    business_rules:
+      - Отчетный период фильтруется по дате создания заявки.
+      - Каждая заявка учитывается один раз через признак is_unique.
+      - >-
+        Заявка считается размеченной, если хотя бы одно из полей final_segment
+        или final_source отличается от значения Без разметки.
+      - Значение Прочее считается разметкой.
+      - Продажи Самотока без заявки не участвуют в расчете.
+      - Значение 0.25 отображается как 25 процентов.
+      - Метрика является отношением и не суммируется между группами.
+    sql_template: >-
+      DIV0(
+        SUM(CASE
+          WHEN application_id IS NOT NULL
+            AND manager != 'Самоток'
+            AND is_unique = 1
+            AND (
+              final_segment != 'Без разметки'
+              OR final_source != 'Без разметки'
+            )
+          THEN 1
+          ELSE 0
+        END),
+        SUM(CASE
+          WHEN application_id IS NOT NULL
+            AND manager != 'Самоток'
+          THEN is_unique
+          ELSE 0
+        END)
+      )
