@@ -34,6 +34,21 @@ tables:
         expr: OWNER_EMAIL
         data_type: VARCHAR
 
+      - name: DICTIONARY_NAME
+        synonyms:
+          - название справочника
+        description: Название справочника, уникальное в рамках владельца.
+        expr: DICTIONARY_NAME
+        data_type: VARCHAR
+
+      - name: DICTIONARY_CREATED_BY
+        synonyms:
+          - автор справочника
+          - кто создал справочник
+        description: E-mail пользователя, который создал или импортировал справочник.
+        expr: CREATED_BY
+        data_type: VARCHAR
+
       - name: RECORD_TYPE
         synonyms:
           - тип события

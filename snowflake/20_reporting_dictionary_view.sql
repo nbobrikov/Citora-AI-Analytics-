@@ -12,6 +12,8 @@ WITH dictionary_rows AS (
         facts.*,
         sets.dictionary_id,
         sets.owner_email,
+        sets.dictionary_name,
+        sets.created_by,
         IFF(
             facts.record_type = 'APPLICATION',
             facts.application_promo,
