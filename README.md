@@ -128,6 +128,9 @@ Python stored procedure импортирует обработчики из Git r
 - Доступные агенту метрики и измерения явно описываются в YAML.
 - Агент имеет доступ только на чтение к подготовленным аналитическим данным.
 - Изменения попадают в Snowflake только после merge и синхронизации Git clone.
+- Cortex Agent `CITORA.ANALYTICS.CITORA_AI_ANALYST` использует Cortex Analyst
+  поверх `CITORA_ANALYTICS_SEMANTIC_VIEW` и отвечает на вопросы о метриках на
+  естественном языке.
 
 ## Этапы разработки
 
