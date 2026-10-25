@@ -101,3 +101,72 @@ metrics:
         THEN is_unique
         ELSE 0
       END)
+
+  - id: application_to_sale_conversion
+    name: Конверсия заявок в продажи
+    description: >-
+      Отношение количества продаж, привязанных к заявкам отчетного периода,
+      к количеству заявок, созданных в этом периоде.
+    type: ratio
+    format: percent
+    time_dimension: application_created_at
+    additivity: non_additive
+    conversion_window:
+      parameter: conversion_period_days
+      default_days: 30
+    dimensions:
+      - final_source
+      - final_segment
+      - manager
+    filters:
+      - application_id is not null
+      - match_type != 'sale_without_application'
+      - manager != 'Самоток'
+    numerator:
+      name: Продажи по заявкам периода
+      expression: sale_id
+      aggregation: count
+      sql_template: >-
+        COUNT(CASE
+          WHEN application_id IS NOT NULL
+            AND sale_id IS NOT NULL
+            AND manager != 'Самоток'
+          THEN 1
+        END)
+    denominator:
+      name: Заявки периода
+      expression: is_unique
+      aggregation: sum
+      sql_template: >-
+        SUM(CASE
+          WHEN application_id IS NOT NULL
+            AND manager != 'Самоток'
+          THEN is_unique
+          ELSE 0
+        END)
+    business_rules:
+      - Отчетный период фильтруется по дате создания заявки.
+      - >-
+        Дата продажи может быть позже конца отчетного периода, если продажа
+        попала в настроенное окно конверсии после заявки.
+      - >-
+        Значение за прошедший период может увеличиваться по мере появления
+        продаж в течение окна конверсии.
+      - Продажи Самотока без заявки не участвуют в расчете.
+      - Метрика является отношением и не суммируется между группами.
+      - Значение 0.25 отображается как 25 процентов.
+    sql_template: >-
+      DIV0(
+        COUNT(CASE
+          WHEN application_id IS NOT NULL
+            AND sale_id IS NOT NULL
+            AND manager != 'Самоток'
+          THEN 1
+        END),
+        SUM(CASE
+          WHEN application_id IS NOT NULL
+            AND manager != 'Самоток'
+          THEN is_unique
+          ELSE 0
+        END)
+      )

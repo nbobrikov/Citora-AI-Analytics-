@@ -60,3 +60,28 @@ def test_applications_count_metric_definition() -> None:
         "match_type != 'sale_without_application'",
         "manager != 'Самоток'",
     ]
+
+
+def test_application_to_sale_conversion_metric_definition() -> None:
+    payload = yaml.safe_load(METRICS_PATH.read_text(encoding="utf-8"))
+    metrics = {metric["id"]: metric for metric in payload["metrics"]}
+    conversion = metrics["application_to_sale_conversion"]
+
+    assert conversion["type"] == "ratio"
+    assert conversion["format"] == "percent"
+    assert conversion["time_dimension"] == "application_created_at"
+    assert conversion["additivity"] == "non_additive"
+    assert conversion["conversion_window"] == {
+        "parameter": "conversion_period_days",
+        "default_days": 30,
+    }
+    assert conversion["dimensions"] == [
+        "final_source",
+        "final_segment",
+        "manager",
+    ]
+    assert conversion["numerator"]["aggregation"] == "count"
+    assert conversion["numerator"]["expression"] == "sale_id"
+    assert conversion["denominator"]["aggregation"] == "sum"
+    assert conversion["denominator"]["expression"] == "is_unique"
+    assert "DIV0" in conversion["sql_template"]
