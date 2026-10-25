@@ -24,107 +24,107 @@ WITH dictionary_rows AS (
 
 promo_candidates AS (
     SELECT
-        rows.dictionary_id,
-        rows.reporting_event_id,
+        dictionary_data.dictionary_id,
+        dictionary_data.reporting_event_id,
         entries.output_source,
         entries.output_segment
-    FROM dictionary_rows AS rows
+    FROM dictionary_rows AS dictionary_data
     INNER JOIN CITORA.CONFIG.DICTIONARY_ENTRIES AS entries
-        ON rows.dictionary_id = entries.dictionary_id
+        ON dictionary_data.dictionary_id = entries.dictionary_id
        AND entries.mapping_type = 'PROMO'
-       AND LOWER(TRIM(rows.event_promo)) = entries.match_value
+       AND LOWER(TRIM(dictionary_data.event_promo)) = entries.match_value
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY rows.dictionary_id, rows.reporting_event_id
+        PARTITION BY dictionary_data.dictionary_id, dictionary_data.reporting_event_id
         ORDER BY entries.priority
     ) = 1
 ),
 
 source_candidates AS (
     SELECT
-        rows.dictionary_id,
-        rows.reporting_event_id,
+        dictionary_data.dictionary_id,
+        dictionary_data.reporting_event_id,
         entries.output_source
-    FROM dictionary_rows AS rows
+    FROM dictionary_rows AS dictionary_data
     INNER JOIN CITORA.CONFIG.DICTIONARY_ENTRIES AS entries
-        ON rows.dictionary_id = entries.dictionary_id
+        ON dictionary_data.dictionary_id = entries.dictionary_id
        AND entries.mapping_type = 'SOURCE'
        AND (
-            (NOT entries.is_prefix AND LOWER(TRIM(rows.final_source)) = entries.match_value)
+            (NOT entries.is_prefix AND LOWER(TRIM(dictionary_data.final_source)) = entries.match_value)
             OR (
                 entries.is_prefix
                 AND STARTSWITH(
-                    LOWER(TRIM(rows.final_source)),
+                    LOWER(TRIM(dictionary_data.final_source)),
                     LEFT(entries.match_value, LENGTH(entries.match_value) - 1)
                 )
             )
        )
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY rows.dictionary_id, rows.reporting_event_id
+        PARTITION BY dictionary_data.dictionary_id, dictionary_data.reporting_event_id
         ORDER BY entries.is_prefix, entries.priority
     ) = 1
 ),
 
 segment_candidates AS (
     SELECT
-        rows.dictionary_id,
-        rows.reporting_event_id,
+        dictionary_data.dictionary_id,
+        dictionary_data.reporting_event_id,
         entries.output_segment
-    FROM dictionary_rows AS rows
+    FROM dictionary_rows AS dictionary_data
     INNER JOIN CITORA.CONFIG.DICTIONARY_ENTRIES AS entries
-        ON rows.dictionary_id = entries.dictionary_id
+        ON dictionary_data.dictionary_id = entries.dictionary_id
        AND entries.mapping_type = 'SEGMENT'
        AND (
-            (NOT entries.is_prefix AND LOWER(TRIM(rows.final_segment)) = entries.match_value)
+            (NOT entries.is_prefix AND LOWER(TRIM(dictionary_data.final_segment)) = entries.match_value)
             OR (
                 entries.is_prefix
                 AND STARTSWITH(
-                    LOWER(TRIM(rows.final_segment)),
+                    LOWER(TRIM(dictionary_data.final_segment)),
                     LEFT(entries.match_value, LENGTH(entries.match_value) - 1)
                 )
             )
        )
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY rows.dictionary_id, rows.reporting_event_id
+        PARTITION BY dictionary_data.dictionary_id, dictionary_data.reporting_event_id
         ORDER BY entries.is_prefix, entries.priority
     ) = 1
 ),
 
 manager_candidates AS (
     SELECT
-        rows.dictionary_id,
-        rows.reporting_event_id,
+        dictionary_data.dictionary_id,
+        dictionary_data.reporting_event_id,
         entries.output_manager
-    FROM dictionary_rows AS rows
+    FROM dictionary_rows AS dictionary_data
     INNER JOIN CITORA.CONFIG.DICTIONARY_ENTRIES AS entries
-        ON rows.dictionary_id = entries.dictionary_id
+        ON dictionary_data.dictionary_id = entries.dictionary_id
        AND entries.mapping_type = 'MANAGER'
-       AND LOWER(TRIM(rows.manager)) = entries.match_value
+       AND LOWER(TRIM(dictionary_data.manager)) = entries.match_value
     QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY rows.dictionary_id, rows.reporting_event_id
+        PARTITION BY dictionary_data.dictionary_id, dictionary_data.reporting_event_id
         ORDER BY entries.priority
     ) = 1
 )
 
 SELECT
-    rows.* EXCLUDE (final_source, final_segment, manager, event_promo),
-    rows.final_source AS raw_source,
-    rows.final_segment AS raw_segment,
-    rows.manager AS raw_manager,
+    dictionary_data.* EXCLUDE (final_source, final_segment, manager, event_promo),
+    dictionary_data.final_source AS raw_source,
+    dictionary_data.final_segment AS raw_segment,
+    dictionary_data.manager AS raw_manager,
     COALESCE(
         promo.output_source,
         source.output_source,
-        IFF(NULLIF(TRIM(rows.final_source), '') IS NULL, 'Без разметки', 'Прочее')
+        IFF(NULLIF(TRIM(dictionary_data.final_source), '') IS NULL, 'Без разметки', 'Прочее')
     ) AS final_source,
     COALESCE(
         promo.output_segment,
         segment.output_segment,
-        IFF(NULLIF(TRIM(rows.final_segment), '') IS NULL, 'Без разметки', 'Прочее')
+        IFF(NULLIF(TRIM(dictionary_data.final_segment), '') IS NULL, 'Без разметки', 'Прочее')
     ) AS final_segment,
     COALESCE(
         manager.output_manager,
-        IFF(NULLIF(TRIM(rows.manager), '') IS NULL, 'Без менеджера', 'Прочее')
+        IFF(NULLIF(TRIM(dictionary_data.manager), '') IS NULL, 'Без менеджера', 'Прочее')
     ) AS manager
-FROM dictionary_rows AS rows
+FROM dictionary_rows AS dictionary_data
 LEFT JOIN promo_candidates AS promo
     USING (dictionary_id, reporting_event_id)
 LEFT JOIN source_candidates AS source
