@@ -23,4 +23,6 @@ def test_leads_metric_definition() -> None:
     assert leads["type"] == "count_distinct"
     assert leads["expression"] == "phone_number"
     assert leads["time_dimension"] == "application_created_at"
+    assert leads["additivity"] == "non_additive"
+    assert leads["dimensions"] == ["final_source", "final_segment"]
     assert leads["filters"] == ["application_id is not null"]

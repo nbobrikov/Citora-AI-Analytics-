@@ -25,12 +25,22 @@ metrics:
     type: count_distinct
     expression: phone_number
     time_dimension: application_created_at
+    additivity: non_additive
+    dimensions:
+      - final_source
+      - final_segment
     filters:
       - application_id is not null
     business_rules:
       - Повторные заявки с одним номером телефона считаются одним лидом.
       - Пустой исходный номер нормализован в строку 0 и считается одним лидом.
       - Продажи без заявки не участвуют в расчете.
+      - >-
+        При группировке по источнику или сегменту уникальные телефоны считаются
+        отдельно внутри каждой группы.
+      - >-
+        Один телефон может относиться к нескольким источникам или сегментам,
+        поэтому сумма лидов по группам может не равняться общему числу лидов.
     sql_template: >-
       COUNT(DISTINCT CASE
         WHEN application_id IS NOT NULL THEN phone_number
