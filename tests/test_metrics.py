@@ -104,3 +104,32 @@ def test_self_flow_sales_share_metric_definition() -> None:
     ]
     assert self_flow_share["denominator"]["expression"] == "sale_id"
     assert "DIV0" in self_flow_share["sql_template"]
+
+
+def test_average_conversion_time_metric_definition() -> None:
+    payload = yaml.safe_load(METRICS_PATH.read_text(encoding="utf-8"))
+    metrics = {metric["id"]: metric for metric in payload["metrics"]}
+    average_time = metrics["average_conversion_time"]
+
+    assert average_time["type"] == "average"
+    assert average_time["format"] == "decimal_days"
+    assert average_time["expression"] == "conversion_period_days"
+    assert average_time["time_dimension"] == "application_created_at"
+    assert average_time["additivity"] == "non_additive"
+    assert average_time["conversion_window"] == {
+        "parameter": "conversion_period_days",
+        "default_days": 30,
+    }
+    assert average_time["dimensions"] == [
+        "final_source",
+        "final_segment",
+        "manager",
+    ]
+    assert average_time["filters"] == [
+        "application_id is not null",
+        "sale_id is not null",
+        "match_type = 'matched'",
+        "is_unique = 1",
+        "manager != 'Самоток'",
+    ]
+    assert "AVG" in average_time["sql_template"]

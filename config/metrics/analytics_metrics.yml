@@ -217,3 +217,48 @@ metrics:
         END),
         COUNT(CASE WHEN sale_id IS NOT NULL THEN 1 END)
       )
+
+  - id: average_conversion_time
+    name: Среднее время конверсии
+    description: >-
+      Среднее количество дней между созданием заявки и первой продажей,
+      связанной с этой заявкой в пределах настроенного окна конверсии.
+    type: average
+    format: decimal_days
+    expression: conversion_period_days
+    time_dimension: application_created_at
+    additivity: non_additive
+    conversion_window:
+      parameter: conversion_period_days
+      default_days: 30
+    dimensions:
+      - final_source
+      - final_segment
+      - manager
+    filters:
+      - application_id is not null
+      - sale_id is not null
+      - match_type = 'matched'
+      - is_unique = 1
+      - manager != 'Самоток'
+    business_rules:
+      - Отчетный период фильтруется по дате создания заявки.
+      - Для каждой реализованной заявки учитывается только первая продажа.
+      - Нереализованные заявки не участвуют в расчете.
+      - Продажи Самотока без заявки не участвуют в расчете.
+      - >-
+        Продажи за пределами conversion_period_days не связываются с заявкой
+        аналитическим слоем и поэтому не участвуют в расчете.
+      - >-
+        Значение за прошедший период может изменяться по мере появления первых
+        продаж в течение настроенного окна конверсии.
+      - Метрика измеряется в календарных днях и не суммируется между группами.
+    sql_template: >-
+      AVG(CASE
+        WHEN application_id IS NOT NULL
+          AND sale_id IS NOT NULL
+          AND match_type = 'matched'
+          AND is_unique = 1
+          AND manager != 'Самоток'
+        THEN conversion_period_days
+      END)
