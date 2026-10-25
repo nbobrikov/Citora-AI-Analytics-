@@ -6,6 +6,7 @@ PROJECT_ROOT = Path(__file__).parents[1]
 SEMANTIC_VIEW_PATH = (
     PROJECT_ROOT / "config" / "semantic" / "citora_analytics_semantic_view.yml"
 )
+SEMANTIC_DEPLOY_PATH = PROJECT_ROOT / "snowflake" / "12_register_semantic_view.sql"
 
 
 def test_semantic_view_contains_catalog_metrics() -> None:
@@ -37,3 +38,12 @@ def test_semantic_view_has_separate_application_and_sale_dates() -> None:
     }
 
     assert time_dimensions == {"APPLICATION_CREATED_AT", "PAID_AT"}
+
+
+def test_semantic_deployment_embeds_the_versioned_yaml() -> None:
+    yaml_specification = SEMANTIC_VIEW_PATH.read_text(encoding="utf-8").strip()
+    sql_parts = SEMANTIC_DEPLOY_PATH.read_text(encoding="utf-8").split("$$")
+
+    assert len(sql_parts) == 5
+    assert sql_parts[1].strip() == yaml_specification
+    assert sql_parts[3].strip() == yaml_specification

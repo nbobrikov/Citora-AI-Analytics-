@@ -1,33 +1,523 @@
 -- Validate and deploy the Snowflake-native Citora semantic view from Git YAML.
--- Run after the reporting table and dbt tests have completed successfully.
+-- The YAML below is generated from config/semantic/citora_analytics_semantic_view.yml.
 
 USE ROLE SECURITYADMIN;
 
 GRANT CREATE SEMANTIC VIEW ON SCHEMA CITORA.ANALYTICS
     TO ROLE CITORA_TRANSFORMER;
 
-GRANT CREATE PROCEDURE ON SCHEMA CITORA.PLATFORM
-    TO ROLE CITORA_TRANSFORMER;
-
 USE ROLE CITORA_TRANSFORMER;
 USE WAREHOUSE CITORA_TRANSFORMING_WH;
 USE DATABASE CITORA;
-USE SCHEMA PLATFORM;
+USE SCHEMA ANALYTICS;
 
-CREATE OR REPLACE PROCEDURE CITORA.PLATFORM.DEPLOY_SEMANTIC_VIEW()
-RETURNS VARCHAR
-LANGUAGE PYTHON
-RUNTIME_VERSION = '3.12'
-PACKAGES = ('snowflake-snowpark-python')
-IMPORTS = (
-    '@CITORA.PLATFORM.CITORA_REPO/branches/main/src/citora_ai_analytic/semantic.py',
-    '@CITORA.PLATFORM.CITORA_REPO/branches/main/config/semantic/citora_analytics_semantic_view.yml'
-)
-HANDLER = 'semantic.run'
-COMMENT = 'Validates and deploys the Citora semantic view from versioned YAML'
-EXECUTE AS OWNER;
+-- Remove the obsolete Python wrapper used by the previous deployment approach.
+DROP PROCEDURE IF EXISTS CITORA.PLATFORM.DEPLOY_SEMANTIC_VIEW();
 
-CALL CITORA.PLATFORM.DEPLOY_SEMANTIC_VIEW();
+-- Validate the full specification without changing Snowflake objects.
+CALL SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML(
+    'CITORA.ANALYTICS',
+    $$
+name: CITORA_ANALYTICS_SEMANTIC_VIEW
+description: Семантический слой Citora для анализа заявок, продаж и конверсии.
+
+tables:
+  - name: APPLICATION_SALES
+    synonyms:
+      - воронка заявок и продаж
+      - application sales funnel
+    description: >-
+      Связки заявок и продаж, включая заявки без продаж и продажи Самотока без
+      заявок. Одна заявка может занимать несколько строк при нескольких продажах.
+    base_table:
+      database: CITORA
+      schema: ANALYTICS
+      table: FCT_APPLICATION_SALES
+    primary_key:
+      columns:
+        - REPORTING_ROW_ID
+
+    dimensions:
+      - name: FINAL_SOURCE
+        synonyms:
+          - источник
+          - source
+        description: Итоговый источник заявки или продажи.
+        expr: FINAL_SOURCE
+        data_type: VARCHAR
+
+      - name: FINAL_SEGMENT
+        synonyms:
+          - сегмент
+          - segment
+        description: Итоговый клиентский или маркетинговый сегмент.
+        expr: FINAL_SEGMENT
+        data_type: VARCHAR
+
+      - name: MANAGER
+        synonyms:
+          - менеджер
+          - ответственный
+        description: Менеджер заявки; для продаж без заявки используется Самоток.
+        expr: MANAGER
+        data_type: VARCHAR
+
+      - name: MATCH_TYPE
+        synonyms:
+          - тип связи
+        description: Тип связи заявки и продажи.
+        expr: MATCH_TYPE
+        data_type: VARCHAR
+        is_enum: true
+        sample_values:
+          - matched
+          - application_without_sale
+          - sale_without_application
+
+      - name: FUNNEL
+        synonyms:
+          - воронка
+        description: Воронка исходной заявки.
+        expr: FUNNEL
+        data_type: VARCHAR
+
+      - name: PRODUCT
+        synonyms:
+          - продукт
+        description: Продукт продажи.
+        expr: PRODUCT
+        data_type: VARCHAR
+
+    time_dimensions:
+      - name: APPLICATION_CREATED_AT
+        synonyms:
+          - дата заявки
+          - дата создания заявки
+        description: >-
+          Дата и время подачи заявки в часовом поясе Europe/Berlin. Используется
+          для лидов, заявок, конверсии, времени конверсии и доли разметки.
+        expr: APPLICATION_CREATED_AT
+        data_type: TIMESTAMP_NTZ
+
+      - name: PAID_AT
+        synonyms:
+          - дата продажи
+          - дата оплаты
+        description: >-
+          Дата и время оплаты в часовом поясе Europe/Berlin. Используется для
+          количества продаж и доли Самотока.
+        expr: PAID_AT
+        data_type: TIMESTAMP_NTZ
+
+    facts:
+      - name: AMOUNT
+        description: Сумма продажи.
+        expr: AMOUNT
+        data_type: NUMBER(38,2)
+
+      - name: CONVERSION_PERIOD_DAYS
+        description: Число дней от заявки до связанной продажи.
+        expr: CONVERSION_PERIOD_DAYS
+        data_type: FLOAT
+
+      - name: IS_UNIQUE_APPLICATION
+        description: Признак единственной отчетной строки заявки.
+        expr: IS_UNIQUE
+        data_type: NUMBER
+        access_modifier: private_access
+
+    metrics:
+      - name: LEADS
+        synonyms:
+          - лиды
+          - количество лидов
+        description: >-
+          Уникальные номера телефона среди заявок периода. Значение 0 считается
+          одним лидом. Метрика неаддитивна по источникам, сегментам и менеджерам.
+        expr: >-
+          COUNT(DISTINCT CASE
+            WHEN APPLICATION_ID IS NOT NULL THEN PHONE_NUMBER
+          END)
+
+      - name: SALES_COUNT
+        synonyms:
+          - продажи
+          - количество продаж
+        description: Количество продаж по дате оплаты. Аддитивная метрика.
+        expr: COUNT(CASE WHEN SALE_ID IS NOT NULL THEN 1 END)
+
+      - name: APPLICATIONS_COUNT
+        synonyms:
+          - заявки
+          - количество заявок
+        description: >-
+          Количество заявок по дате создания. Каждая заявка считается один раз;
+          Самоток не учитывается. Аддитивная метрика.
+        expr: >-
+          SUM(CASE
+            WHEN APPLICATION_ID IS NOT NULL
+              AND MATCH_TYPE != 'sale_without_application'
+              AND MANAGER != 'Самоток'
+            THEN IS_UNIQUE
+            ELSE 0
+          END)
+
+      - name: APPLICATION_TO_SALE_CONVERSION
+        synonyms:
+          - конверсия
+          - конверсия заявок в продажи
+        description: >-
+          Продажи, связанные с заявками периода, деленные на заявки периода.
+          Период задается датой заявки; продажи могут добегать в пределах окна
+          конверсии аналитического слоя. Самоток не учитывается.
+        expr: >-
+          DIV0(
+            COUNT(CASE
+              WHEN APPLICATION_ID IS NOT NULL
+                AND SALE_ID IS NOT NULL
+                AND MANAGER != 'Самоток'
+              THEN 1
+            END),
+            SUM(CASE
+              WHEN APPLICATION_ID IS NOT NULL
+                AND MANAGER != 'Самоток'
+              THEN IS_UNIQUE
+              ELSE 0
+            END)
+          )
+
+      - name: SELF_FLOW_SALES_SHARE
+        synonyms:
+          - доля самотока
+          - доля самотока в продажах
+        description: >-
+          Продажи без связанной заявки, деленные на все продажи по дате оплаты.
+        expr: >-
+          DIV0(
+            COUNT(CASE
+              WHEN SALE_ID IS NOT NULL
+                AND MATCH_TYPE = 'sale_without_application'
+                AND MANAGER = 'Самоток'
+              THEN 1
+            END),
+            COUNT(CASE WHEN SALE_ID IS NOT NULL THEN 1 END)
+          )
+
+      - name: AVERAGE_CONVERSION_TIME
+        synonyms:
+          - среднее время конверсии
+          - средний период конверсии
+        description: >-
+          Среднее число дней от заявки до первой связанной продажи в пределах
+          окна конверсии. Нереализованные заявки и Самоток не учитываются.
+        expr: >-
+          AVG(CASE
+            WHEN APPLICATION_ID IS NOT NULL
+              AND SALE_ID IS NOT NULL
+              AND MATCH_TYPE = 'matched'
+              AND IS_UNIQUE = 1
+              AND MANAGER != 'Самоток'
+            THEN CONVERSION_PERIOD_DAYS
+          END)
+
+      - name: MARKED_APPLICATIONS_SHARE
+        synonyms:
+          - доля размеченных заявок
+          - разметка заявок
+        description: >-
+          Доля заявок, у которых источник и/или сегмент отличается от значения
+          Без разметки. Значение Прочее считается разметкой. Самоток исключен.
+        expr: >-
+          DIV0(
+            SUM(CASE
+              WHEN APPLICATION_ID IS NOT NULL
+                AND MANAGER != 'Самоток'
+                AND IS_UNIQUE = 1
+                AND (
+                  FINAL_SEGMENT != 'Без разметки'
+                  OR FINAL_SOURCE != 'Без разметки'
+                )
+              THEN 1
+              ELSE 0
+            END),
+            SUM(CASE
+              WHEN APPLICATION_ID IS NOT NULL
+                AND MANAGER != 'Самоток'
+              THEN IS_UNIQUE
+              ELSE 0
+            END)
+          )
+
+module_custom_instructions:
+  sql_generation: |
+    Interpret all reporting dates in the Europe/Berlin time zone.
+    Filter LEADS, APPLICATIONS_COUNT, APPLICATION_TO_SALE_CONVERSION,
+    AVERAGE_CONVERSION_TIME, and MARKED_APPLICATIONS_SHARE by
+    APPLICATION_CREATED_AT. Filter SALES_COUNT and SELF_FLOW_SALES_SHARE by
+    PAID_AT. Ratios are stored as fractions: format 0.25 as 25% for users.
+    Do not sum non-additive metrics across sources, segments, managers, or time.
+    For conversion metrics, include sales that occurred after the reporting
+    period when they are already linked to an application by the analytical
+    layer's configured conversion window.
+  question_categorization: |
+    If a request gives a period but does not name a date field, select the date
+    dimension prescribed for the requested metric in the SQL instructions.
+$$,
+    TRUE,
+    TRUE
+);
+-- Create a new semantic view or alter the existing one after validation succeeds.
+CALL SYSTEM$CREATE_SEMANTIC_VIEW_FROM_YAML(
+    'CITORA.ANALYTICS',
+    $$
+name: CITORA_ANALYTICS_SEMANTIC_VIEW
+description: Семантический слой Citora для анализа заявок, продаж и конверсии.
+
+tables:
+  - name: APPLICATION_SALES
+    synonyms:
+      - воронка заявок и продаж
+      - application sales funnel
+    description: >-
+      Связки заявок и продаж, включая заявки без продаж и продажи Самотока без
+      заявок. Одна заявка может занимать несколько строк при нескольких продажах.
+    base_table:
+      database: CITORA
+      schema: ANALYTICS
+      table: FCT_APPLICATION_SALES
+    primary_key:
+      columns:
+        - REPORTING_ROW_ID
+
+    dimensions:
+      - name: FINAL_SOURCE
+        synonyms:
+          - источник
+          - source
+        description: Итоговый источник заявки или продажи.
+        expr: FINAL_SOURCE
+        data_type: VARCHAR
+
+      - name: FINAL_SEGMENT
+        synonyms:
+          - сегмент
+          - segment
+        description: Итоговый клиентский или маркетинговый сегмент.
+        expr: FINAL_SEGMENT
+        data_type: VARCHAR
+
+      - name: MANAGER
+        synonyms:
+          - менеджер
+          - ответственный
+        description: Менеджер заявки; для продаж без заявки используется Самоток.
+        expr: MANAGER
+        data_type: VARCHAR
+
+      - name: MATCH_TYPE
+        synonyms:
+          - тип связи
+        description: Тип связи заявки и продажи.
+        expr: MATCH_TYPE
+        data_type: VARCHAR
+        is_enum: true
+        sample_values:
+          - matched
+          - application_without_sale
+          - sale_without_application
+
+      - name: FUNNEL
+        synonyms:
+          - воронка
+        description: Воронка исходной заявки.
+        expr: FUNNEL
+        data_type: VARCHAR
+
+      - name: PRODUCT
+        synonyms:
+          - продукт
+        description: Продукт продажи.
+        expr: PRODUCT
+        data_type: VARCHAR
+
+    time_dimensions:
+      - name: APPLICATION_CREATED_AT
+        synonyms:
+          - дата заявки
+          - дата создания заявки
+        description: >-
+          Дата и время подачи заявки в часовом поясе Europe/Berlin. Используется
+          для лидов, заявок, конверсии, времени конверсии и доли разметки.
+        expr: APPLICATION_CREATED_AT
+        data_type: TIMESTAMP_NTZ
+
+      - name: PAID_AT
+        synonyms:
+          - дата продажи
+          - дата оплаты
+        description: >-
+          Дата и время оплаты в часовом поясе Europe/Berlin. Используется для
+          количества продаж и доли Самотока.
+        expr: PAID_AT
+        data_type: TIMESTAMP_NTZ
+
+    facts:
+      - name: AMOUNT
+        description: Сумма продажи.
+        expr: AMOUNT
+        data_type: NUMBER(38,2)
+
+      - name: CONVERSION_PERIOD_DAYS
+        description: Число дней от заявки до связанной продажи.
+        expr: CONVERSION_PERIOD_DAYS
+        data_type: FLOAT
+
+      - name: IS_UNIQUE_APPLICATION
+        description: Признак единственной отчетной строки заявки.
+        expr: IS_UNIQUE
+        data_type: NUMBER
+        access_modifier: private_access
+
+    metrics:
+      - name: LEADS
+        synonyms:
+          - лиды
+          - количество лидов
+        description: >-
+          Уникальные номера телефона среди заявок периода. Значение 0 считается
+          одним лидом. Метрика неаддитивна по источникам, сегментам и менеджерам.
+        expr: >-
+          COUNT(DISTINCT CASE
+            WHEN APPLICATION_ID IS NOT NULL THEN PHONE_NUMBER
+          END)
+
+      - name: SALES_COUNT
+        synonyms:
+          - продажи
+          - количество продаж
+        description: Количество продаж по дате оплаты. Аддитивная метрика.
+        expr: COUNT(CASE WHEN SALE_ID IS NOT NULL THEN 1 END)
+
+      - name: APPLICATIONS_COUNT
+        synonyms:
+          - заявки
+          - количество заявок
+        description: >-
+          Количество заявок по дате создания. Каждая заявка считается один раз;
+          Самоток не учитывается. Аддитивная метрика.
+        expr: >-
+          SUM(CASE
+            WHEN APPLICATION_ID IS NOT NULL
+              AND MATCH_TYPE != 'sale_without_application'
+              AND MANAGER != 'Самоток'
+            THEN IS_UNIQUE
+            ELSE 0
+          END)
+
+      - name: APPLICATION_TO_SALE_CONVERSION
+        synonyms:
+          - конверсия
+          - конверсия заявок в продажи
+        description: >-
+          Продажи, связанные с заявками периода, деленные на заявки периода.
+          Период задается датой заявки; продажи могут добегать в пределах окна
+          конверсии аналитического слоя. Самоток не учитывается.
+        expr: >-
+          DIV0(
+            COUNT(CASE
+              WHEN APPLICATION_ID IS NOT NULL
+                AND SALE_ID IS NOT NULL
+                AND MANAGER != 'Самоток'
+              THEN 1
+            END),
+            SUM(CASE
+              WHEN APPLICATION_ID IS NOT NULL
+                AND MANAGER != 'Самоток'
+              THEN IS_UNIQUE
+              ELSE 0
+            END)
+          )
+
+      - name: SELF_FLOW_SALES_SHARE
+        synonyms:
+          - доля самотока
+          - доля самотока в продажах
+        description: >-
+          Продажи без связанной заявки, деленные на все продажи по дате оплаты.
+        expr: >-
+          DIV0(
+            COUNT(CASE
+              WHEN SALE_ID IS NOT NULL
+                AND MATCH_TYPE = 'sale_without_application'
+                AND MANAGER = 'Самоток'
+              THEN 1
+            END),
+            COUNT(CASE WHEN SALE_ID IS NOT NULL THEN 1 END)
+          )
+
+      - name: AVERAGE_CONVERSION_TIME
+        synonyms:
+          - среднее время конверсии
+          - средний период конверсии
+        description: >-
+          Среднее число дней от заявки до первой связанной продажи в пределах
+          окна конверсии. Нереализованные заявки и Самоток не учитываются.
+        expr: >-
+          AVG(CASE
+            WHEN APPLICATION_ID IS NOT NULL
+              AND SALE_ID IS NOT NULL
+              AND MATCH_TYPE = 'matched'
+              AND IS_UNIQUE = 1
+              AND MANAGER != 'Самоток'
+            THEN CONVERSION_PERIOD_DAYS
+          END)
+
+      - name: MARKED_APPLICATIONS_SHARE
+        synonyms:
+          - доля размеченных заявок
+          - разметка заявок
+        description: >-
+          Доля заявок, у которых источник и/или сегмент отличается от значения
+          Без разметки. Значение Прочее считается разметкой. Самоток исключен.
+        expr: >-
+          DIV0(
+            SUM(CASE
+              WHEN APPLICATION_ID IS NOT NULL
+                AND MANAGER != 'Самоток'
+                AND IS_UNIQUE = 1
+                AND (
+                  FINAL_SEGMENT != 'Без разметки'
+                  OR FINAL_SOURCE != 'Без разметки'
+                )
+              THEN 1
+              ELSE 0
+            END),
+            SUM(CASE
+              WHEN APPLICATION_ID IS NOT NULL
+                AND MANAGER != 'Самоток'
+              THEN IS_UNIQUE
+              ELSE 0
+            END)
+          )
+
+module_custom_instructions:
+  sql_generation: |
+    Interpret all reporting dates in the Europe/Berlin time zone.
+    Filter LEADS, APPLICATIONS_COUNT, APPLICATION_TO_SALE_CONVERSION,
+    AVERAGE_CONVERSION_TIME, and MARKED_APPLICATIONS_SHARE by
+    APPLICATION_CREATED_AT. Filter SALES_COUNT and SELF_FLOW_SALES_SHARE by
+    PAID_AT. Ratios are stored as fractions: format 0.25 as 25% for users.
+    Do not sum non-additive metrics across sources, segments, managers, or time.
+    For conversion metrics, include sales that occurred after the reporting
+    period when they are already linked to an application by the analytical
+    layer's configured conversion window.
+  question_categorization: |
+    If a request gives a period but does not name a date field, select the date
+    dimension prescribed for the requested metric in the SQL instructions.
+$$,
+    FALSE,
+    TRUE
+);
 
 SHOW SEMANTIC VIEWS LIKE 'CITORA_ANALYTICS_SEMANTIC_VIEW'
     IN SCHEMA CITORA.ANALYTICS;
