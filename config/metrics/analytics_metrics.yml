@@ -1,0 +1,37 @@
+version: 1
+
+catalog:
+  id: citora_analytics_metrics
+  name: Citora Analytics Metrics
+  description: Единый каталог бизнес-метрик для отчетности и AI-аналитика.
+
+  dataset:
+    database: CITORA
+    schema: ANALYTICS
+    table: FCT_APPLICATION_SALES
+    grain: Одна связка заявки и продажи, включая несвязанные заявки и продажи.
+
+  reporting_period:
+    start_inclusive: true
+    end_inclusive: true
+    timezone: Europe/Berlin
+
+metrics:
+  - id: leads
+    name: Лиды
+    description: >-
+      Количество уникальных номеров телефона среди заявок, созданных в
+      выбранном отчетном периоде.
+    type: count_distinct
+    expression: phone_number
+    time_dimension: application_created_at
+    filters:
+      - application_id is not null
+    business_rules:
+      - Повторные заявки с одним номером телефона считаются одним лидом.
+      - Пустой исходный номер нормализован в строку 0 и считается одним лидом.
+      - Продажи без заявки не участвуют в расчете.
+    sql_template: >-
+      COUNT(DISTINCT CASE
+        WHEN application_id IS NOT NULL THEN phone_number
+      END)
