@@ -39,3 +39,24 @@ def test_sales_count_metric_definition() -> None:
     assert sales["additivity"] == "additive"
     assert sales["dimensions"] == ["final_source", "final_segment", "manager"]
     assert sales["filters"] == ["sale_id is not null"]
+
+
+def test_applications_count_metric_definition() -> None:
+    payload = yaml.safe_load(METRICS_PATH.read_text(encoding="utf-8"))
+    metrics = {metric["id"]: metric for metric in payload["metrics"]}
+    applications = metrics["applications_count"]
+
+    assert applications["type"] == "sum"
+    assert applications["expression"] == "is_unique"
+    assert applications["time_dimension"] == "application_created_at"
+    assert applications["additivity"] == "additive"
+    assert applications["dimensions"] == [
+        "final_source",
+        "final_segment",
+        "manager",
+    ]
+    assert applications["filters"] == [
+        "application_id is not null",
+        "match_type != 'sale_without_application'",
+        "manager != 'Самоток'",
+    ]

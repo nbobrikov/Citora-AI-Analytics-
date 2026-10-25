@@ -68,3 +68,36 @@ metrics:
         Сумма количества продаж по источникам, сегментам или менеджерам равна
         общему количеству продаж при использовании одинаковых фильтров.
     sql_template: COUNT(CASE WHEN sale_id IS NOT NULL THEN 1 END)
+
+  - id: applications_count
+    name: Количество заявок
+    description: Количество заявок, созданных в выбранном отчетном периоде.
+    type: sum
+    expression: is_unique
+    time_dimension: application_created_at
+    additivity: additive
+    dimensions:
+      - final_source
+      - final_segment
+      - manager
+    filters:
+      - application_id is not null
+      - match_type != 'sale_without_application'
+      - manager != 'Самоток'
+    business_rules:
+      - >-
+        Поле is_unique равно 1 ровно у одной отчетной строки каждой заявки,
+        поэтому заявка с несколькими продажами считается один раз.
+      - Заявка без продажи учитывается в расчете.
+      - Продажи Самотока без заявки не учитываются.
+      - >-
+        Сумма количества заявок по источникам, сегментам или менеджерам равна
+        общему количеству заявок при использовании одинаковых фильтров.
+    sql_template: >-
+      SUM(CASE
+        WHEN application_id IS NOT NULL
+          AND match_type != 'sale_without_application'
+          AND manager != 'Самоток'
+        THEN is_unique
+        ELSE 0
+      END)
