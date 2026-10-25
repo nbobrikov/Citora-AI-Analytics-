@@ -32,7 +32,8 @@ CALL CITORA.PLATFORM.LOAD_EXCEL(
     ),
     'source_db.xlsx',
     'CITORA',
-    'RAW'
+    'RAW',
+    'manual@snowflake'
 );
 
 -- Post-load checks that do not expose personal contact data.

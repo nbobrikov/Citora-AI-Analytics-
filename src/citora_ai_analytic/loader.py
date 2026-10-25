@@ -36,6 +36,7 @@ def append_raw_tables(
     loaded_at: datetime,
     source_file: str,
     file_hash: str,
+    uploaded_by: str,
 ) -> list[dict[str, Any]]:
     """Append one immutable, traceable Excel batch to Snowflake RAW tables."""
     database = _validate_identifier(database, "database")
@@ -85,15 +86,24 @@ def append_raw_tables(
         )
 
     total_rows = sum(item["rows_loaded"] for item in results)
+    period_values = []
+    for frame in frames.values():
+        for column in ("created_at", "paid_at"):
+            if column in frame.columns:
+                period_values.append(pd.to_datetime(frame[column], errors="coerce"))
+    valid_period_values = pd.concat(period_values).dropna() if period_values else pd.Series(dtype="datetime64[ns]")
+    period_start = valid_period_values.min().date() if not valid_period_values.empty else None
+    period_end = valid_period_values.max().date() if not valid_period_values.empty else None
     session.sql(
         f"""
         INSERT INTO {database}.{schema}.LOAD_HISTORY (
             LOAD_ID, SOURCE_FILE, FILE_HASH, STARTED_AT, FINISHED_AT,
-            STATUS, ROWS_LOADED, ERROR_MESSAGE
+            STATUS, ROWS_LOADED, ERROR_MESSAGE, UPLOADED_BY,
+            DATA_PERIOD_START, DATA_PERIOD_END, DBT_STATUS
         )
-        SELECT ?, ?, ?, ?, CURRENT_TIMESTAMP(), 'SUCCESS', ?, NULL
+        SELECT ?, ?, ?, ?, CURRENT_TIMESTAMP(), 'SUCCESS', ?, NULL, ?, ?, ?, 'PENDING'
         """,
-        params=[load_id, source_file, file_hash, loaded_at, total_rows],
+        params=[load_id, source_file, file_hash, loaded_at, total_rows, uploaded_by, period_start, period_end],
     ).collect()
     return results
 
