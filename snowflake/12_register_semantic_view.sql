@@ -35,6 +35,7 @@ tables:
       table: V_REPORTING_METRICS_ENRICHED
     primary_key:
       columns:
+        - DICTIONARY_ID
         - REPORTING_EVENT_ID
 
     dimensions:
@@ -295,6 +296,7 @@ tables:
       table: V_REPORTING_METRICS_ENRICHED
     primary_key:
       columns:
+        - DICTIONARY_ID
         - REPORTING_EVENT_ID
 
     dimensions:
