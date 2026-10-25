@@ -27,17 +27,28 @@ tables:
       - воронка заявок и продаж
       - application sales funnel
     description: >-
-      Связки заявок и продаж, включая заявки без продаж и продажи Самотока без
-      заявок. Одна заявка может занимать несколько строк при нескольких продажах.
+      Отчетные события с единой датой периода: одна строка APPLICATION на
+      заявку и одна строка SALE на продажу.
     base_table:
       database: CITORA
       schema: ANALYTICS
-      table: FCT_APPLICATION_SALES
+      table: FCT_REPORTING_METRICS
     primary_key:
       columns:
-        - REPORTING_ROW_ID
+        - REPORTING_EVENT_ID
 
     dimensions:
+      - name: RECORD_TYPE
+        synonyms:
+          - тип события
+        description: APPLICATION для заявки или SALE для продажи.
+        expr: RECORD_TYPE
+        data_type: VARCHAR
+        is_enum: true
+        sample_values:
+          - APPLICATION
+          - SALE
+
       - name: FINAL_SOURCE
         synonyms:
           - источник
@@ -89,24 +100,14 @@ tables:
         data_type: VARCHAR
 
     time_dimensions:
-      - name: APPLICATION_CREATED_AT
+      - name: REPORT_DATE
         synonyms:
-          - дата заявки
-          - дата создания заявки
+          - отчетная дата
+          - дата отчета
         description: >-
-          Дата и время подачи заявки в часовом поясе Europe/Berlin. Используется
-          для лидов, заявок, конверсии, времени конверсии и доли разметки.
-        expr: APPLICATION_CREATED_AT
-        data_type: TIMESTAMP_NTZ
-
-      - name: PAID_AT
-        synonyms:
-          - дата продажи
-          - дата оплаты
-        description: >-
-          Дата и время оплаты в часовом поясе Europe/Berlin. Используется для
-          количества продаж и доли Самотока.
-        expr: PAID_AT
+          Единая дата фильтрации отчетного периода в Europe/Berlin: дата
+          создания для APPLICATION и дата оплаты для SALE.
+        expr: REPORT_DATE
         data_type: TIMESTAMP_NTZ
 
     facts:
@@ -120,9 +121,9 @@ tables:
         expr: CONVERSION_PERIOD_DAYS
         data_type: FLOAT
 
-      - name: IS_UNIQUE_APPLICATION
-        description: Признак единственной отчетной строки заявки.
-        expr: IS_UNIQUE
+      - name: MATCHED_SALES_COUNT
+        description: Количество продаж, связанных с заявкой периода.
+        expr: MATCHED_SALES_COUNT
         data_type: NUMBER
         access_modifier: private_access
 
@@ -136,29 +137,28 @@ tables:
           одним лидом. Метрика неаддитивна по источникам, сегментам и менеджерам.
         expr: >-
           COUNT(DISTINCT CASE
-            WHEN APPLICATION_ID IS NOT NULL THEN PHONE_NUMBER
+            WHEN RECORD_TYPE = 'APPLICATION' THEN PHONE_NUMBER
           END)
 
       - name: SALES_COUNT
         synonyms:
           - продажи
           - количество продаж
-        description: Количество продаж по дате оплаты. Аддитивная метрика.
-        expr: COUNT(CASE WHEN SALE_ID IS NOT NULL THEN 1 END)
+        description: Количество событий продаж по единой отчетной дате.
+        expr: COUNT(CASE WHEN RECORD_TYPE = 'SALE' THEN 1 END)
 
       - name: APPLICATIONS_COUNT
         synonyms:
           - заявки
           - количество заявок
         description: >-
-          Количество заявок по дате создания. Каждая заявка считается один раз;
-          Самоток не учитывается. Аддитивная метрика.
+          Количество событий заявок по единой отчетной дате. Самоток не
+          учитывается. Аддитивная метрика.
         expr: >-
           SUM(CASE
-            WHEN APPLICATION_ID IS NOT NULL
-              AND MATCH_TYPE != 'sale_without_application'
+            WHEN RECORD_TYPE = 'APPLICATION'
               AND MANAGER != 'Самоток'
-            THEN IS_UNIQUE
+            THEN 1
             ELSE 0
           END)
 
@@ -172,16 +172,16 @@ tables:
           конверсии аналитического слоя. Самоток не учитывается.
         expr: >-
           DIV0(
-            COUNT(CASE
-              WHEN APPLICATION_ID IS NOT NULL
-                AND SALE_ID IS NOT NULL
+            SUM(CASE
+              WHEN RECORD_TYPE = 'APPLICATION'
                 AND MANAGER != 'Самоток'
-              THEN 1
+              THEN MATCHED_SALES_COUNT
+              ELSE 0
             END),
             SUM(CASE
-              WHEN APPLICATION_ID IS NOT NULL
+              WHEN RECORD_TYPE = 'APPLICATION'
                 AND MANAGER != 'Самоток'
-              THEN IS_UNIQUE
+              THEN 1
               ELSE 0
             END)
           )
@@ -195,12 +195,12 @@ tables:
         expr: >-
           DIV0(
             COUNT(CASE
-              WHEN SALE_ID IS NOT NULL
+              WHEN RECORD_TYPE = 'SALE'
                 AND MATCH_TYPE = 'sale_without_application'
                 AND MANAGER = 'Самоток'
               THEN 1
             END),
-            COUNT(CASE WHEN SALE_ID IS NOT NULL THEN 1 END)
+            COUNT(CASE WHEN RECORD_TYPE = 'SALE' THEN 1 END)
           )
 
       - name: AVERAGE_CONVERSION_TIME
@@ -212,10 +212,8 @@ tables:
           окна конверсии. Нереализованные заявки и Самоток не учитываются.
         expr: >-
           AVG(CASE
-            WHEN APPLICATION_ID IS NOT NULL
-              AND SALE_ID IS NOT NULL
+            WHEN RECORD_TYPE = 'APPLICATION'
               AND MATCH_TYPE = 'matched'
-              AND IS_UNIQUE = 1
               AND MANAGER != 'Самоток'
             THEN CONVERSION_PERIOD_DAYS
           END)
@@ -230,9 +228,8 @@ tables:
         expr: >-
           DIV0(
             SUM(CASE
-              WHEN APPLICATION_ID IS NOT NULL
+              WHEN RECORD_TYPE = 'APPLICATION'
                 AND MANAGER != 'Самоток'
-                AND IS_UNIQUE = 1
                 AND (
                   FINAL_SEGMENT != 'Без разметки'
                   OR FINAL_SOURCE != 'Без разметки'
@@ -241,9 +238,9 @@ tables:
               ELSE 0
             END),
             SUM(CASE
-              WHEN APPLICATION_ID IS NOT NULL
+              WHEN RECORD_TYPE = 'APPLICATION'
                 AND MANAGER != 'Самоток'
-              THEN IS_UNIQUE
+              THEN 1
               ELSE 0
             END)
           )
@@ -251,23 +248,19 @@ tables:
 module_custom_instructions:
   sql_generation: |
     Interpret all reporting dates in the Europe/Berlin time zone.
-    Filter LEADS, APPLICATIONS_COUNT, APPLICATION_TO_SALE_CONVERSION,
-    AVERAGE_CONVERSION_TIME, and MARKED_APPLICATIONS_SHARE by
-    APPLICATION_CREATED_AT. Filter SALES_COUNT and SELF_FLOW_SALES_SHARE by
-    PAID_AT. This rule defines what a user means by a reporting period such as
-    "March 2025". When one request contains metrics from both date families,
-    apply each metric family's own date filter; do not apply one shared date
-    dimension to all metrics. Generate separate semantic queries or CTEs and
-    combine their results when necessary. Ratios are stored as fractions:
-    format 0.25 as 25% for users.
+    Always filter every requested metric by REPORT_DATE when the user specifies
+    a reporting period. REPORT_DATE already represents APPLICATION_CREATED_AT
+    for application metrics and PAID_AT for sales metrics. A single REPORT_DATE
+    filter is therefore correct for mixed metric requests. Ratios are stored as
+    fractions: format 0.25 as 25% for users.
     Do not sum non-additive metrics across sources, segments, managers, or time.
     For conversion metrics, include sales that occurred after the reporting
     period when they are already linked to an application by the analytical
     layer's configured conversion window.
   question_categorization: |
-    If a request gives a period but does not name a date field, select the date
-    dimension prescribed for the requested metric in the SQL instructions.
-$$,
+    If a request gives a period, use REPORT_DATE unless the user explicitly
+    requests a different technical date.
+    $$,
     TRUE,
     TRUE
 );
@@ -284,17 +277,28 @@ tables:
       - воронка заявок и продаж
       - application sales funnel
     description: >-
-      Связки заявок и продаж, включая заявки без продаж и продажи Самотока без
-      заявок. Одна заявка может занимать несколько строк при нескольких продажах.
+      Отчетные события с единой датой периода: одна строка APPLICATION на
+      заявку и одна строка SALE на продажу.
     base_table:
       database: CITORA
       schema: ANALYTICS
-      table: FCT_APPLICATION_SALES
+      table: FCT_REPORTING_METRICS
     primary_key:
       columns:
-        - REPORTING_ROW_ID
+        - REPORTING_EVENT_ID
 
     dimensions:
+      - name: RECORD_TYPE
+        synonyms:
+          - тип события
+        description: APPLICATION для заявки или SALE для продажи.
+        expr: RECORD_TYPE
+        data_type: VARCHAR
+        is_enum: true
+        sample_values:
+          - APPLICATION
+          - SALE
+
       - name: FINAL_SOURCE
         synonyms:
           - источник
@@ -346,24 +350,14 @@ tables:
         data_type: VARCHAR
 
     time_dimensions:
-      - name: APPLICATION_CREATED_AT
+      - name: REPORT_DATE
         synonyms:
-          - дата заявки
-          - дата создания заявки
+          - отчетная дата
+          - дата отчета
         description: >-
-          Дата и время подачи заявки в часовом поясе Europe/Berlin. Используется
-          для лидов, заявок, конверсии, времени конверсии и доли разметки.
-        expr: APPLICATION_CREATED_AT
-        data_type: TIMESTAMP_NTZ
-
-      - name: PAID_AT
-        synonyms:
-          - дата продажи
-          - дата оплаты
-        description: >-
-          Дата и время оплаты в часовом поясе Europe/Berlin. Используется для
-          количества продаж и доли Самотока.
-        expr: PAID_AT
+          Единая дата фильтрации отчетного периода в Europe/Berlin: дата
+          создания для APPLICATION и дата оплаты для SALE.
+        expr: REPORT_DATE
         data_type: TIMESTAMP_NTZ
 
     facts:
@@ -377,9 +371,9 @@ tables:
         expr: CONVERSION_PERIOD_DAYS
         data_type: FLOAT
 
-      - name: IS_UNIQUE_APPLICATION
-        description: Признак единственной отчетной строки заявки.
-        expr: IS_UNIQUE
+      - name: MATCHED_SALES_COUNT
+        description: Количество продаж, связанных с заявкой периода.
+        expr: MATCHED_SALES_COUNT
         data_type: NUMBER
         access_modifier: private_access
 
@@ -393,29 +387,28 @@ tables:
           одним лидом. Метрика неаддитивна по источникам, сегментам и менеджерам.
         expr: >-
           COUNT(DISTINCT CASE
-            WHEN APPLICATION_ID IS NOT NULL THEN PHONE_NUMBER
+            WHEN RECORD_TYPE = 'APPLICATION' THEN PHONE_NUMBER
           END)
 
       - name: SALES_COUNT
         synonyms:
           - продажи
           - количество продаж
-        description: Количество продаж по дате оплаты. Аддитивная метрика.
-        expr: COUNT(CASE WHEN SALE_ID IS NOT NULL THEN 1 END)
+        description: Количество событий продаж по единой отчетной дате.
+        expr: COUNT(CASE WHEN RECORD_TYPE = 'SALE' THEN 1 END)
 
       - name: APPLICATIONS_COUNT
         synonyms:
           - заявки
           - количество заявок
         description: >-
-          Количество заявок по дате создания. Каждая заявка считается один раз;
-          Самоток не учитывается. Аддитивная метрика.
+          Количество событий заявок по единой отчетной дате. Самоток не
+          учитывается. Аддитивная метрика.
         expr: >-
           SUM(CASE
-            WHEN APPLICATION_ID IS NOT NULL
-              AND MATCH_TYPE != 'sale_without_application'
+            WHEN RECORD_TYPE = 'APPLICATION'
               AND MANAGER != 'Самоток'
-            THEN IS_UNIQUE
+            THEN 1
             ELSE 0
           END)
 
@@ -429,16 +422,16 @@ tables:
           конверсии аналитического слоя. Самоток не учитывается.
         expr: >-
           DIV0(
-            COUNT(CASE
-              WHEN APPLICATION_ID IS NOT NULL
-                AND SALE_ID IS NOT NULL
+            SUM(CASE
+              WHEN RECORD_TYPE = 'APPLICATION'
                 AND MANAGER != 'Самоток'
-              THEN 1
+              THEN MATCHED_SALES_COUNT
+              ELSE 0
             END),
             SUM(CASE
-              WHEN APPLICATION_ID IS NOT NULL
+              WHEN RECORD_TYPE = 'APPLICATION'
                 AND MANAGER != 'Самоток'
-              THEN IS_UNIQUE
+              THEN 1
               ELSE 0
             END)
           )
@@ -452,12 +445,12 @@ tables:
         expr: >-
           DIV0(
             COUNT(CASE
-              WHEN SALE_ID IS NOT NULL
+              WHEN RECORD_TYPE = 'SALE'
                 AND MATCH_TYPE = 'sale_without_application'
                 AND MANAGER = 'Самоток'
               THEN 1
             END),
-            COUNT(CASE WHEN SALE_ID IS NOT NULL THEN 1 END)
+            COUNT(CASE WHEN RECORD_TYPE = 'SALE' THEN 1 END)
           )
 
       - name: AVERAGE_CONVERSION_TIME
@@ -469,10 +462,8 @@ tables:
           окна конверсии. Нереализованные заявки и Самоток не учитываются.
         expr: >-
           AVG(CASE
-            WHEN APPLICATION_ID IS NOT NULL
-              AND SALE_ID IS NOT NULL
+            WHEN RECORD_TYPE = 'APPLICATION'
               AND MATCH_TYPE = 'matched'
-              AND IS_UNIQUE = 1
               AND MANAGER != 'Самоток'
             THEN CONVERSION_PERIOD_DAYS
           END)
@@ -487,9 +478,8 @@ tables:
         expr: >-
           DIV0(
             SUM(CASE
-              WHEN APPLICATION_ID IS NOT NULL
+              WHEN RECORD_TYPE = 'APPLICATION'
                 AND MANAGER != 'Самоток'
-                AND IS_UNIQUE = 1
                 AND (
                   FINAL_SEGMENT != 'Без разметки'
                   OR FINAL_SOURCE != 'Без разметки'
@@ -498,9 +488,9 @@ tables:
               ELSE 0
             END),
             SUM(CASE
-              WHEN APPLICATION_ID IS NOT NULL
+              WHEN RECORD_TYPE = 'APPLICATION'
                 AND MANAGER != 'Самоток'
-              THEN IS_UNIQUE
+              THEN 1
               ELSE 0
             END)
           )
@@ -508,23 +498,19 @@ tables:
 module_custom_instructions:
   sql_generation: |
     Interpret all reporting dates in the Europe/Berlin time zone.
-    Filter LEADS, APPLICATIONS_COUNT, APPLICATION_TO_SALE_CONVERSION,
-    AVERAGE_CONVERSION_TIME, and MARKED_APPLICATIONS_SHARE by
-    APPLICATION_CREATED_AT. Filter SALES_COUNT and SELF_FLOW_SALES_SHARE by
-    PAID_AT. This rule defines what a user means by a reporting period such as
-    "March 2025". When one request contains metrics from both date families,
-    apply each metric family's own date filter; do not apply one shared date
-    dimension to all metrics. Generate separate semantic queries or CTEs and
-    combine their results when necessary. Ratios are stored as fractions:
-    format 0.25 as 25% for users.
+    Always filter every requested metric by REPORT_DATE when the user specifies
+    a reporting period. REPORT_DATE already represents APPLICATION_CREATED_AT
+    for application metrics and PAID_AT for sales metrics. A single REPORT_DATE
+    filter is therefore correct for mixed metric requests. Ratios are stored as
+    fractions: format 0.25 as 25% for users.
     Do not sum non-additive metrics across sources, segments, managers, or time.
     For conversion metrics, include sales that occurred after the reporting
     period when they are already linked to an application by the analytical
     layer's configured conversion window.
   question_categorization: |
-    If a request gives a period but does not name a date field, select the date
-    dimension prescribed for the requested metric in the SQL instructions.
-$$,
+    If a request gives a period, use REPORT_DATE unless the user explicitly
+    requests a different technical date.
+    $$,
     FALSE,
     TRUE
 );

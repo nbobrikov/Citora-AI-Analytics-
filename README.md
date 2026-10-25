@@ -116,6 +116,10 @@ Python stored procedure импортирует обработчики из Git r
   связанной заявки.
 - Физическая отчетная таблица `CITORA.ANALYTICS.FCT_APPLICATION_SALES`
   перестраивается dbt из полного актуального набора RAW-данных.
+- Пользовательская таблица `CITORA.ANALYTICS.FCT_REPORTING_METRICS` содержит
+  одно событие `APPLICATION` на заявку и одно событие `SALE` на продажу.
+  Поле `REPORT_DATE` равно дате создания заявки для `APPLICATION` и дате
+  оплаты для `SALE`, поэтому один фильтр периода корректен для всех метрик.
 - Бизнес-метрики постепенно добавляются в единый YAML-каталог
   `config/metrics/analytics_metrics.yml`; первая метрика — уникальные лиды.
 - Исполняемая Snowflake Semantic View хранится в

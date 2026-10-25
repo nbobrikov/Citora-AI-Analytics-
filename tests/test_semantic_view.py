@@ -18,7 +18,7 @@ def test_semantic_view_contains_catalog_metrics() -> None:
     assert table["base_table"] == {
         "database": "CITORA",
         "schema": "ANALYTICS",
-        "table": "FCT_APPLICATION_SALES",
+        "table": "FCT_REPORTING_METRICS",
     }
     assert metric_names == {
         "LEADS",
@@ -31,13 +31,13 @@ def test_semantic_view_contains_catalog_metrics() -> None:
     }
 
 
-def test_semantic_view_has_separate_application_and_sale_dates() -> None:
+def test_semantic_view_has_one_reporting_date() -> None:
     semantic = yaml.safe_load(SEMANTIC_VIEW_PATH.read_text(encoding="utf-8"))
     time_dimensions = {
         dimension["name"] for dimension in semantic["tables"][0]["time_dimensions"]
     }
 
-    assert time_dimensions == {"APPLICATION_CREATED_AT", "PAID_AT"}
+    assert time_dimensions == {"REPORT_DATE"}
 
 
 def test_semantic_deployment_embeds_the_versioned_yaml() -> None:
@@ -49,10 +49,9 @@ def test_semantic_deployment_embeds_the_versioned_yaml() -> None:
     assert sql_parts[3].strip() == yaml_specification
 
 
-def test_mixed_metric_periods_keep_their_own_date_dimensions() -> None:
+def test_mixed_metrics_use_one_reporting_date() -> None:
     semantic_model = yaml.safe_load(SEMANTIC_VIEW_PATH.read_text(encoding="utf-8"))
     instructions = semantic_model["module_custom_instructions"]["sql_generation"]
 
-    assert "APPLICATION_CREATED_AT" in instructions
-    assert "PAID_AT" in instructions
-    assert "separate semantic queries or CTEs" in instructions
+    assert "Always filter every requested metric by REPORT_DATE" in instructions
+    assert "A single REPORT_DATE" in instructions

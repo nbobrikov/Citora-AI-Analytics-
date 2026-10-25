@@ -32,3 +32,11 @@ SELECT
 FROM CITORA.ANALYTICS.FCT_APPLICATION_SALES
 GROUP BY final_segment, final_source
 ORDER BY row_count DESC, final_segment, final_source;
+
+SELECT
+    COUNT_IF(record_type = 'APPLICATION') AS application_event_count,
+    COUNT_IF(record_type = 'SALE') AS sale_event_count,
+    MIN(report_date) AS first_report_date,
+    MAX(report_date) AS last_report_date,
+    MAX(dbt_built_at) AS dbt_built_at
+FROM CITORA.ANALYTICS.FCT_REPORTING_METRICS;

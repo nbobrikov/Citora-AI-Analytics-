@@ -8,13 +8,18 @@ catalog:
   dataset:
     database: CITORA
     schema: ANALYTICS
-    table: FCT_APPLICATION_SALES
-    grain: Одна связка заявки и продажи, включая несвязанные заявки и продажи.
+    table: FCT_REPORTING_METRICS
+    grain: >-
+      Одно отчетное событие: APPLICATION на заявку или SALE на продажу.
 
   reporting_period:
     start_inclusive: true
     end_inclusive: true
     timezone: Europe/Berlin
+    time_dimension: report_date
+    description: >-
+      REPORT_DATE равна дате создания для APPLICATION и дате оплаты для SALE,
+      поэтому один фильтр периода корректно применяется ко всем метрикам.
 
 metrics:
   - id: leads
@@ -24,14 +29,14 @@ metrics:
       выбранном отчетном периоде.
     type: count_distinct
     expression: phone_number
-    time_dimension: application_created_at
+    time_dimension: report_date
     additivity: non_additive
     dimensions:
       - final_source
       - final_segment
       - manager
     filters:
-      - application_id is not null
+      - record_type = 'APPLICATION'
     business_rules:
       - Повторные заявки с одним номером телефона считаются одним лидом.
       - Пустой исходный номер нормализован в строку 0 и считается одним лидом.
@@ -45,7 +50,7 @@ metrics:
         числу лидов.
     sql_template: >-
       COUNT(DISTINCT CASE
-        WHEN application_id IS NOT NULL THEN phone_number
+        WHEN record_type = 'APPLICATION' THEN phone_number
       END)
 
   - id: sales_count
@@ -53,41 +58,38 @@ metrics:
     description: Количество продаж с датой оплаты в выбранном отчетном периоде.
     type: count
     expression: sale_id
-    time_dimension: paid_at
+    time_dimension: report_date
     additivity: additive
     dimensions:
       - final_source
       - final_segment
       - manager
     filters:
-      - sale_id is not null
+      - record_type = 'SALE'
     business_rules:
       - Каждая продажа представлена одной строкой и считается один раз.
       - Продажи без заявки включаются в расчет с менеджером Самоток.
       - >-
         Сумма количества продаж по источникам, сегментам или менеджерам равна
         общему количеству продаж при использовании одинаковых фильтров.
-    sql_template: COUNT(CASE WHEN sale_id IS NOT NULL THEN 1 END)
+    sql_template: COUNT(CASE WHEN record_type = 'SALE' THEN 1 END)
 
   - id: applications_count
     name: Количество заявок
     description: Количество заявок, созданных в выбранном отчетном периоде.
     type: sum
-    expression: is_unique
-    time_dimension: application_created_at
+    expression: reporting_event_id
+    time_dimension: report_date
     additivity: additive
     dimensions:
       - final_source
       - final_segment
       - manager
     filters:
-      - application_id is not null
-      - match_type != 'sale_without_application'
+      - record_type = 'APPLICATION'
       - manager != 'Самоток'
     business_rules:
-      - >-
-        Поле is_unique равно 1 ровно у одной отчетной строки каждой заявки,
-        поэтому заявка с несколькими продажами считается один раз.
+      - Каждая заявка представлена ровно одной записью APPLICATION.
       - Заявка без продажи учитывается в расчете.
       - Продажи Самотока без заявки не учитываются.
       - >-
@@ -95,10 +97,9 @@ metrics:
         общему количеству заявок при использовании одинаковых фильтров.
     sql_template: >-
       SUM(CASE
-        WHEN application_id IS NOT NULL
-          AND match_type != 'sale_without_application'
+        WHEN record_type = 'APPLICATION'
           AND manager != 'Самоток'
-        THEN is_unique
+        THEN 1
         ELSE 0
       END)
 
@@ -109,7 +110,7 @@ metrics:
       к количеству заявок, созданных в этом периоде.
     type: ratio
     format: percent
-    time_dimension: application_created_at
+    time_dimension: report_date
     additivity: non_additive
     conversion_window:
       parameter: conversion_period_days
@@ -119,29 +120,28 @@ metrics:
       - final_segment
       - manager
     filters:
-      - application_id is not null
-      - match_type != 'sale_without_application'
+      - record_type = 'APPLICATION'
       - manager != 'Самоток'
     numerator:
       name: Продажи по заявкам периода
-      expression: sale_id
-      aggregation: count
-      sql_template: >-
-        COUNT(CASE
-          WHEN application_id IS NOT NULL
-            AND sale_id IS NOT NULL
-            AND manager != 'Самоток'
-          THEN 1
-        END)
-    denominator:
-      name: Заявки периода
-      expression: is_unique
+      expression: matched_sales_count
       aggregation: sum
       sql_template: >-
         SUM(CASE
-          WHEN application_id IS NOT NULL
+          WHEN record_type = 'APPLICATION'
             AND manager != 'Самоток'
-          THEN is_unique
+          THEN matched_sales_count
+          ELSE 0
+        END)
+    denominator:
+      name: Заявки периода
+      expression: reporting_event_id
+      aggregation: sum
+      sql_template: >-
+        SUM(CASE
+          WHEN record_type = 'APPLICATION'
+            AND manager != 'Самоток'
+          THEN 1
           ELSE 0
         END)
     business_rules:
@@ -157,16 +157,16 @@ metrics:
       - Значение 0.25 отображается как 25 процентов.
     sql_template: >-
       DIV0(
-        COUNT(CASE
-          WHEN application_id IS NOT NULL
-            AND sale_id IS NOT NULL
+        SUM(CASE
+          WHEN record_type = 'APPLICATION'
             AND manager != 'Самоток'
-          THEN 1
+          THEN matched_sales_count
+          ELSE 0
         END),
         SUM(CASE
-          WHEN application_id IS NOT NULL
+          WHEN record_type = 'APPLICATION'
             AND manager != 'Самоток'
-          THEN is_unique
+          THEN 1
           ELSE 0
         END)
       )
@@ -176,13 +176,13 @@ metrics:
     description: Доля продаж без связанной заявки среди всех продаж периода.
     type: ratio
     format: percent
-    time_dimension: paid_at
+    time_dimension: report_date
     additivity: non_additive
     dimensions:
       - final_source
       - final_segment
     filters:
-      - sale_id is not null
+      - record_type = 'SALE'
     numerator:
       name: Продажи из самотока
       expression: sale_id
@@ -192,7 +192,7 @@ metrics:
         - manager = 'Самоток'
       sql_template: >-
         COUNT(CASE
-          WHEN sale_id IS NOT NULL
+          WHEN record_type = 'SALE'
             AND match_type = 'sale_without_application'
             AND manager = 'Самоток'
           THEN 1
@@ -201,7 +201,7 @@ metrics:
       name: Все продажи
       expression: sale_id
       aggregation: count
-      sql_template: COUNT(CASE WHEN sale_id IS NOT NULL THEN 1 END)
+      sql_template: COUNT(CASE WHEN record_type = 'SALE' THEN 1 END)
     business_rules:
       - Отчетный период фильтруется по дате оплаты.
       - Самотоком считается продажа без связанной заявки.
@@ -210,12 +210,12 @@ metrics:
     sql_template: >-
       DIV0(
         COUNT(CASE
-          WHEN sale_id IS NOT NULL
+          WHEN record_type = 'SALE'
             AND match_type = 'sale_without_application'
             AND manager = 'Самоток'
           THEN 1
         END),
-        COUNT(CASE WHEN sale_id IS NOT NULL THEN 1 END)
+        COUNT(CASE WHEN record_type = 'SALE' THEN 1 END)
       )
 
   - id: average_conversion_time
@@ -226,7 +226,7 @@ metrics:
     type: average
     format: decimal_days
     expression: conversion_period_days
-    time_dimension: application_created_at
+    time_dimension: report_date
     additivity: non_additive
     conversion_window:
       parameter: conversion_period_days
@@ -236,10 +236,8 @@ metrics:
       - final_segment
       - manager
     filters:
-      - application_id is not null
-      - sale_id is not null
+      - record_type = 'APPLICATION'
       - match_type = 'matched'
-      - is_unique = 1
       - manager != 'Самоток'
     business_rules:
       - Отчетный период фильтруется по дате создания заявки.
@@ -255,10 +253,8 @@ metrics:
       - Метрика измеряется в календарных днях и не суммируется между группами.
     sql_template: >-
       AVG(CASE
-        WHEN application_id IS NOT NULL
-          AND sale_id IS NOT NULL
+        WHEN record_type = 'APPLICATION'
           AND match_type = 'matched'
-          AND is_unique = 1
           AND manager != 'Самоток'
         THEN conversion_period_days
       END)
@@ -270,27 +266,25 @@ metrics:
       среди всех заявок отчетного периода.
     type: ratio
     format: percent
-    time_dimension: application_created_at
+    time_dimension: report_date
     additivity: non_additive
     dimensions:
       - final_source
       - final_segment
       - manager
     filters:
-      - application_id is not null
-      - match_type != 'sale_without_application'
+      - record_type = 'APPLICATION'
       - manager != 'Самоток'
     numerator:
       name: Размеченные заявки
-      expression: is_unique
+      expression: reporting_event_id
       aggregation: sum
       filters:
         - final_segment != 'Без разметки' or final_source != 'Без разметки'
       sql_template: >-
         SUM(CASE
-          WHEN application_id IS NOT NULL
+          WHEN record_type = 'APPLICATION'
             AND manager != 'Самоток'
-            AND is_unique = 1
             AND (
               final_segment != 'Без разметки'
               OR final_source != 'Без разметки'
@@ -300,18 +294,18 @@ metrics:
         END)
     denominator:
       name: Все заявки
-      expression: is_unique
+      expression: reporting_event_id
       aggregation: sum
       sql_template: >-
         SUM(CASE
-          WHEN application_id IS NOT NULL
+          WHEN record_type = 'APPLICATION'
             AND manager != 'Самоток'
-          THEN is_unique
+          THEN 1
           ELSE 0
         END)
     business_rules:
       - Отчетный период фильтруется по дате создания заявки.
-      - Каждая заявка учитывается один раз через признак is_unique.
+      - Каждая заявка учитывается один раз через событие APPLICATION.
       - >-
         Заявка считается размеченной, если хотя бы одно из полей final_segment
         или final_source отличается от значения Без разметки.
@@ -322,9 +316,8 @@ metrics:
     sql_template: >-
       DIV0(
         SUM(CASE
-          WHEN application_id IS NOT NULL
+          WHEN record_type = 'APPLICATION'
             AND manager != 'Самоток'
-            AND is_unique = 1
             AND (
               final_segment != 'Без разметки'
               OR final_source != 'Без разметки'
@@ -333,9 +326,9 @@ metrics:
           ELSE 0
         END),
         SUM(CASE
-          WHEN application_id IS NOT NULL
+          WHEN record_type = 'APPLICATION'
             AND manager != 'Самоток'
-          THEN is_unique
+          THEN 1
           ELSE 0
         END)
       )

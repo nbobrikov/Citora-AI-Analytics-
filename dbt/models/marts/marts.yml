@@ -39,3 +39,31 @@ models:
         description: Время построения физической отчетной таблицы.
         data_tests:
           - not_null
+
+  - name: fct_reporting_metrics
+    description: >-
+      Отчетный слой с единой датой REPORT_DATE. Каждая заявка представлена
+      одной записью APPLICATION с датой создания, а каждая продажа — одной
+      записью SALE с датой оплаты.
+    columns:
+      - name: reporting_event_id
+        description: Стабильный идентификатор события заявки или продажи.
+        data_tests:
+          - not_null
+          - unique
+      - name: record_type
+        description: Тип отчетного события.
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [APPLICATION, SALE]
+      - name: report_date
+        description: Единая дата применения фильтра отчетного периода.
+        data_tests:
+          - not_null
+      - name: matched_sales_count
+        description: >-
+          Количество продаж, связанных с заявкой; заполнено для события
+          APPLICATION и используется в расчете конверсии.
+        data_tests:
+          - not_null
