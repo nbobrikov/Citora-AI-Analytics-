@@ -118,6 +118,9 @@ Python stored procedure импортирует обработчики из Git r
   перестраивается dbt из полного актуального набора RAW-данных.
 - Бизнес-метрики постепенно добавляются в единый YAML-каталог
   `config/metrics/analytics_metrics.yml`; первая метрика — уникальные лиды.
+- Исполняемая Snowflake Semantic View хранится в
+  `config/semantic/citora_analytics_semantic_view.yml`, разворачивается из Git
+  и предоставляет метрики для SQL, Cortex Analyst и Cortex Agents.
 - Доступные агенту метрики и измерения явно описываются в YAML.
 - Агент имеет доступ только на чтение к подготовленным аналитическим данным.
 - Изменения попадают в Snowflake только после merge и синхронизации Git clone.
