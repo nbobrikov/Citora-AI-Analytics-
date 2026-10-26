@@ -1,7 +1,8 @@
 -- One-time privacy migration for existing RAW data.
 -- Run as ACCOUNTADMIN only after the latest Git revision has been fetched and
--- 03_register_procedure.sql plus 18_register_frontend_excel_upload.sql have
--- recreated both loaders with SHA-256 protection.
+-- 03_register_procedure.sql and 18_register_frontend_excel_upload.sql have
+-- recreated both loaders with SHA-256 protection, and
+-- 07_register_dbt_project.sql has refreshed the Snowflake DBT PROJECT object.
 
 USE ROLE ACCOUNTADMIN;
 USE WAREHOUSE CITORA_LOADING_WH;
