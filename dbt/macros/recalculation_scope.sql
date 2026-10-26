@@ -1,6 +1,6 @@
 {% macro delete_recalculation_scope() %}
   {% set recalculation_id = var('recalculation_id', '') %}
-  {% if is_incremental() and recalculation_id %}
+  {% if recalculation_id %}
     delete from {{ this }} as target
     where exists (
       select 1
