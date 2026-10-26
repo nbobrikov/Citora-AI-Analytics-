@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from datetime import datetime
 from typing import Any
@@ -56,7 +57,7 @@ def append_raw_tables(
     for sheet in contract.workbook.sheets:
         table = _validate_identifier(sheet.target_table, "table")
         frame = _add_load_metadata(
-            frames[table],
+            hash_sensitive_columns(frames[table]),
             load_id=load_id,
             loaded_at=loaded_at,
             source_file=source_file,
@@ -106,6 +107,27 @@ def append_raw_tables(
         params=[load_id, source_file, file_hash, loaded_at, total_rows, uploaded_by, period_start, period_end],
     ).collect()
     return results
+
+
+def hash_sensitive_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    """Replace phone numbers and contact IDs with deterministic SHA-256 values."""
+    result = frame.copy()
+    for column in ("phone_number", "contact_id"):
+        if column in result.columns:
+            result[column] = result[column].map(_hash_sensitive_value).astype("string")
+    return result
+
+
+def _hash_sensitive_value(value: object) -> str:
+    if pd.isna(value):
+        canonical = "0"
+    elif isinstance(value, float) and value.is_integer():
+        canonical = str(int(value))
+    else:
+        canonical = str(value).strip().casefold() or "0"
+    if re.fullmatch(r"[0-9a-f]{64}", canonical):
+        return canonical
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _add_load_metadata(

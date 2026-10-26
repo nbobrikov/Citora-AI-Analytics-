@@ -109,7 +109,7 @@ unmatched_applications as (
         applications.phone_number,
         applications.application_sequence_number,
         cast(null as number) as sale_id,
-        cast(null as number) as sale_contact_id,
+        cast(null as varchar) as sale_contact_id,
         cast(null as varchar) as sale_manager,
         cast(null as varchar) as sale_source,
         cast(null as varchar) as sale_segment,
@@ -134,7 +134,7 @@ unmatched_applications as (
 unmatched_sales as (
     select
         cast(null as number) as application_id,
-        cast(null as number) as application_contact_id,
+        cast(null as varchar) as application_contact_id,
         cast(null as varchar) as funnel,
         cast(null as varchar) as application_manager,
         cast(null as varchar) as application_source,

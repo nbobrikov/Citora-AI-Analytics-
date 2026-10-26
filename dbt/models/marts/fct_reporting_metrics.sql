@@ -25,7 +25,7 @@ application_events as (
         details.phone_number,
         details.application_sequence_number,
         cast(null as number) as sale_id,
-        cast(null as number) as sale_contact_id,
+        cast(null as varchar) as sale_contact_id,
         details.application_created_at,
         cast(null as timestamp_ntz) as paid_at,
         details.funnel,

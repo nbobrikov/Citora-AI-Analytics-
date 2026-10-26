@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pandas as pd
 
-from citora_ai_analytic.loader import METADATA_COLUMNS, _add_load_metadata
+from citora_ai_analytic.loader import METADATA_COLUMNS, _add_load_metadata, hash_sensitive_columns
 
 
 def test_load_metadata_identifies_batch_source_and_excel_rows() -> None:
@@ -42,3 +42,23 @@ def test_row_hash_changes_when_source_data_changes() -> None:
     )
 
     assert original_result.loc[0, "_ROW_HASH"] != changed_result.loc[0, "_ROW_HASH"]
+
+
+def test_sensitive_columns_are_sha256_hashed_before_raw_load() -> None:
+    frame = pd.DataFrame({"phone_number": [" 79991234567 ", pd.NA], "contact_id": pd.Series([501, pd.NA], dtype="Int64")})
+
+    result = hash_sensitive_columns(frame)
+
+    assert result["phone_number"].str.fullmatch(r"[0-9a-f]{64}").all()
+    assert result["contact_id"].str.fullmatch(r"[0-9a-f]{64}").all()
+    assert result.loc[0, "phone_number"] == __import__("hashlib").sha256(b"79991234567").hexdigest()
+    assert result.loc[0, "contact_id"] == __import__("hashlib").sha256(b"501").hexdigest()
+    assert result.loc[1, "phone_number"] == __import__("hashlib").sha256(b"0").hexdigest()
+    assert frame.loc[0, "phone_number"] == " 79991234567 "
+
+
+def test_sensitive_hashing_is_idempotent() -> None:
+    once = hash_sensitive_columns(pd.DataFrame({"phone_number": ["79991234567"], "contact_id": [501]}))
+    twice = hash_sensitive_columns(once)
+
+    assert twice.equals(once)

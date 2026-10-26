@@ -16,11 +16,12 @@ models:
         data_tests:
           - not_null
       - name: contact_id
+        description: SHA-256 исходного Contact ID; SHA-256 значения 0 означает отсутствие значения.
         description: Идентификатор контакта; 0 означает отсутствие значения в источнике.
         data_tests:
           - not_null
       - name: phone_number
-        description: Номер телефона; строка 0 означает отсутствие значения в источнике.
+        description: SHA-256 номера телефона; SHA-256 значения 0 означает отсутствие значения в источнике.
         data_tests:
           - not_null
       - name: manager

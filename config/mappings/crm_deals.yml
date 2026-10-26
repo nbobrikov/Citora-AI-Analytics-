@@ -20,7 +20,7 @@ dataset:
       type: integer
       required: true
       nullable: true
-      description: Идентификатор контакта.
+      description: Идентификатор контакта; перед записью в RAW заменяется на SHA-256.
 
     - canonical_name: funnel
       source_names:
@@ -54,7 +54,7 @@ dataset:
       type: string
       required: true
       nullable: true
-      description: Номер телефона, по которому заявки связываются с продажами.
+      description: Номер телефона; перед записью в RAW заменяется на SHA-256 и используется для связывания заявок с продажами.
 
     - canonical_name: paid_at
       source_names:
