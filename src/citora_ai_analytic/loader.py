@@ -92,7 +92,11 @@ def append_raw_tables(
         for column in ("created_at", "paid_at"):
             if column in frame.columns:
                 period_values.append(pd.to_datetime(frame[column], errors="coerce"))
-    valid_period_values = pd.concat(period_values).dropna() if period_values else pd.Series(dtype="datetime64[ns]")
+    valid_period_values = (
+        pd.concat(period_values).dropna()
+        if period_values
+        else pd.Series(dtype="datetime64[ns]")
+    )
     period_start = valid_period_values.min().date() if not valid_period_values.empty else None
     period_end = valid_period_values.max().date() if not valid_period_values.empty else None
     session.sql(
@@ -104,9 +108,68 @@ def append_raw_tables(
         )
         SELECT ?, ?, ?, ?, CURRENT_TIMESTAMP(), 'SUCCESS', ?, NULL, ?, ?, ?, 'PENDING'
         """,
-        params=[load_id, source_file, file_hash, loaded_at, total_rows, uploaded_by, period_start, period_end],
+        params=[
+            load_id,
+            source_file,
+            file_hash,
+            loaded_at,
+            total_rows,
+            uploaded_by,
+            period_start,
+            period_end,
+        ],
     ).collect()
+    _queue_recalculation(
+        session=session,
+        database=database,
+        schema=schema,
+        tables=sorted(expected_tables),
+        recalculation_id=load_id,
+        load_id=load_id,
+        uploaded_by=uploaded_by,
+        period_start=period_start,
+        period_end=period_end,
+    )
     return results
+
+
+def _queue_recalculation(
+    session: Session,
+    database: str,
+    schema: str,
+    tables: list[str],
+    recalculation_id: str,
+    load_id: str,
+    uploaded_by: str,
+    period_start: object,
+    period_end: object,
+) -> None:
+    session.sql(
+        f"""
+        INSERT INTO {database}.PLATFORM.RECALCULATION_QUEUE (
+            RECALCULATION_ID, OPERATION_TYPE, LOAD_ID, REQUESTED_AT,
+            REQUESTED_BY, DATE_FROM, DATE_TO, CONVERSION_PERIOD_DAYS, STATUS
+        )
+        SELECT ?, 'LOAD', ?, CURRENT_TIMESTAMP(), ?, ?, ?, 30, 'PENDING'
+        """,
+        params=[recalculation_id, load_id, uploaded_by, period_start, period_end],
+    ).collect()
+    for table in tables:
+        validated_table = _validate_identifier(table, "table")
+        session.sql(
+            f"""
+            INSERT INTO {database}.PLATFORM.RECALCULATION_IDENTIFIERS (
+                RECALCULATION_ID, PHONE_NUMBER_HASH, CONTACT_ID_HASH, CREATED_AT
+            )
+            SELECT DISTINCT ?, NULLIF(TRIM("phone_number"), ''),
+                   NULLIF(TRIM("contact_id"), ''), CURRENT_TIMESTAMP()
+            FROM {database}.{schema}.{validated_table}
+            WHERE "_LOAD_ID" = ?
+              AND (NULLIF(TRIM("phone_number"), '') IS NOT NULL
+                   OR NULLIF(TRIM("contact_id"), '') IS NOT NULL)
+            """,
+            params=[recalculation_id, load_id],
+        ).collect()
 
 
 def hash_sensitive_columns(frame: pd.DataFrame) -> pd.DataFrame:
