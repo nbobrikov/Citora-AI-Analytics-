@@ -1,8 +1,28 @@
-{{ config(materialized='table') }}
+{{ config(
+    materialized='incremental',
+    incremental_strategy='merge',
+    unique_key='reporting_event_id',
+    on_schema_change='sync_all_columns',
+    pre_hook=delete_recalculation_scope()
+) }}
+
+{% set recalculation_id = var('recalculation_id', '') %}
 
 with detailed as (
     select *
-    from {{ ref('fct_application_sales') }}
+    from {{ ref('fct_application_sales') }} as facts
+    {% if recalculation_id %}
+    where exists (
+        select 1
+        from CITORA.PLATFORM.RECALCULATION_IDENTIFIERS as scope
+        where scope.RECALCULATION_ID = '{{ recalculation_id }}'
+          and (
+              scope.PHONE_NUMBER_HASH = facts.phone_number
+              or scope.CONTACT_ID_HASH = facts.application_contact_id
+              or scope.CONTACT_ID_HASH = facts.sale_contact_id
+          )
+    )
+    {% endif %}
 ),
 
 application_sales_rollup as (

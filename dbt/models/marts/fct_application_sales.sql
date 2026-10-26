@@ -1,4 +1,10 @@
-{{ config(materialized='table') }}
+{{ config(
+    materialized='incremental',
+    incremental_strategy='merge',
+    unique_key='reporting_row_id',
+    on_schema_change='sync_all_columns',
+    pre_hook=delete_recalculation_scope()
+) }}
 
 with enriched_matches as (
     select *

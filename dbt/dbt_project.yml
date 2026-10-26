@@ -11,6 +11,7 @@ clean-targets: ["target", "dbt_packages", "logs"]
 vars:
   recalculation_date_from: ""
   recalculation_date_to: ""
+  recalculation_id: ""
   conversion_period_days: 30
   other_manager_label: Прочее
   self_flow_manager_label: Самоток

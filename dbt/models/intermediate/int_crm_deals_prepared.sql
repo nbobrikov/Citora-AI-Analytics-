@@ -1,6 +1,7 @@
 {% set recalculation_date_from = var('recalculation_date_from', '') %}
 {% set recalculation_date_to = var('recalculation_date_to', '') %}
 {% set conversion_period_days = var('conversion_period_days', 30) | int %}
+{% set recalculation_id = var('recalculation_id', '') %}
 
 with parameters as (
     select
@@ -14,6 +15,17 @@ prepared as (
     from {{ ref('stg_crm_deals') }} as deals
     cross join parameters as params
     where
+      {% if recalculation_id %}
+      exists (
+          select 1
+          from CITORA.PLATFORM.RECALCULATION_IDENTIFIERS as scope
+          where scope.RECALCULATION_ID = '{{ recalculation_id }}'
+            and (
+                scope.PHONE_NUMBER_HASH = deals.phone_number
+                or scope.CONTACT_ID_HASH = deals.contact_id
+            )
+      )
+      {% else %}
       (params.date_from is null and params.date_to is null)
       or (
           (
@@ -45,6 +57,7 @@ prepared as (
               )
           )
       )
+      {% endif %}
 )
 
 select *
