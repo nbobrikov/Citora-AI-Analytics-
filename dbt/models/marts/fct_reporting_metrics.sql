@@ -3,7 +3,7 @@
     incremental_strategy='merge',
     unique_key='reporting_event_id',
     on_schema_change='sync_all_columns',
-    pre_hook=delete_recalculation_scope()
+    pre_hook="{{ delete_recalculation_scope() }}"
 ) }}
 
 {% set recalculation_id = var('recalculation_id', '') %}
